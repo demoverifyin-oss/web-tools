@@ -16,42 +16,76 @@ const esc=v=>String(v??'')
   .replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;');
 
+/* ---------- MAX Z-INDEX (fix: modal now guaranteed on top) ---------- */
+const Z=2147483647;
+
 const css=`
+:root{
+  --wt-bg:#0b0c0f;
+  --wt-panel:#111318f2;
+  --wt-card:#181b21;
+  --wt-border:#262a32;
+  --wt-border-soft:#1e2229;
+  --wt-text:#f2f4f8;
+  --wt-text-dim:#8b93a3;
+  --wt-accent:#7c9eff;
+  --wt-accent-soft:#7c9eff22;
+  --wt-radius:18px;
+}
+
 #wt-app{
   position:fixed;
-  right:18px;
-  bottom:18px;
-  z-index:2147483647;
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  color:#e8eaf0;
+  right:16px;
+  bottom:16px;
+  z-index:${Z};
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  color:var(--wt-text);
+  -webkit-tap-highlight-color:transparent;
 }
+
 #wt-launch{
-  border:1px solid #30343d;
-  background:#111318;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid #ffffff14;
+  background:linear-gradient(160deg,#1a1d24,#0e1015);
   color:#fff;
-  border-radius:12px;
-  padding:11px 16px;
+  border-radius:999px;
+  padding:12px 18px;
   font-size:14px;
   font-weight:600;
-  box-shadow:0 8px 30px #0008;
+  letter-spacing:.01em;
+  box-shadow:0 10px 30px #0009,inset 0 1px 0 #ffffff12;
   cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease;
 }
+#wt-launch:active{transform:scale(.96)}
+#wt-launch .wt-ico{font-size:16px}
+
 #wt-panel{
   display:none;
   position:absolute;
   right:0;
-  bottom:56px;
-  width:min(390px,calc(100vw - 30px));
-  max-height:78vh;
+  bottom:64px;
+  width:min(380px,calc(100vw - 28px));
+  max-height:76vh;
   overflow:hidden;
-  background:#111318;
-  border:1px solid #2c3038;
-  border-radius:16px;
-  box-shadow:0 20px 60px #000b;
+  background:var(--wt-panel);
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  border:1px solid var(--wt-border);
+  border-radius:var(--wt-radius);
+  box-shadow:0 25px 70px #000c,0 0 0 1px #ffffff08 inset;
+  animation:wt-pop .18s cubic-bezier(.2,.9,.3,1.3);
 }
+@keyframes wt-pop{
+  from{opacity:0;transform:translateY(8px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
 #wt-head{
-  padding:16px;
-  border-bottom:1px solid #292d35;
+  padding:18px 18px 14px;
+  border-bottom:1px solid var(--wt-border-soft);
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -59,85 +93,152 @@ const css=`
 #wt-title{
   font-size:16px;
   font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:7px;
 }
+#wt-title .wt-crown{font-size:15px}
 #wt-sub{
-  color:#8e95a3;
+  color:var(--wt-text-dim);
   font-size:11px;
   margin-top:3px;
+  font-weight:500;
 }
 #wt-close{
-  background:#1b1e24;
-  color:#bfc5d0;
-  border:1px solid #30343d;
+  background:#ffffff0d;
+  color:#cfd4de;
+  border:1px solid #ffffff14;
   width:30px;
   height:30px;
-  border-radius:8px;
+  border-radius:10px;
   cursor:pointer;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .15s;
+}
+#wt-close:active{background:#ffffff1f}
+
+#wt-search-wrap{
+  margin:14px;
+  position:relative;
 }
 #wt-search{
-  margin:12px;
-  width:calc(100% - 24px);
+  width:100%;
   box-sizing:border-box;
-  background:#191c22;
-  border:1px solid #30343d;
+  background:#0000003d;
+  border:1px solid var(--wt-border);
   color:#fff;
-  padding:10px 12px;
-  border-radius:9px;
+  padding:11px 12px 11px 34px;
+  border-radius:12px;
   outline:none;
+  font-size:13.5px;
+  transition:border-color .15s,background .15s;
 }
+#wt-search:focus{border-color:var(--wt-accent);background:#00000055}
+#wt-search-ico{
+  position:absolute;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  opacity:.5;
+  font-size:13px;
+  pointer-events:none;
+}
+
 #wt-tools{
-  padding:0 12px 12px;
+  padding:0 12px 14px;
   overflow:auto;
-  max-height:58vh;
+  max-height:54vh;
+  display:grid;
+  gap:6px;
 }
+
 .wt-tool{
   width:100%;
   text-align:left;
-  margin:5px 0;
+  display:flex;
+  align-items:center;
+  gap:12px;
   padding:11px 12px;
-  background:#181b21;
-  border:1px solid #292d35;
-  color:#e8eaf0;
-  border-radius:9px;
+  background:#ffffff05;
+  border:1px solid transparent;
+  color:var(--wt-text);
+  border-radius:13px;
   cursor:pointer;
   transition:.15s;
 }
-.wt-tool:hover{
-  background:#20242b;
-  border-color:#454b57;
+.wt-tool:hover{background:var(--wt-accent-soft);border-color:#7c9eff33}
+.wt-tool:active{transform:scale(.985)}
+.wt-tool-ico{
+  flex:0 0 auto;
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  background:#ffffff08;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
 }
+.wt-tool-body{min-width:0}
 .wt-tool-title{
   font-size:13px;
   font-weight:600;
 }
 .wt-tool-desc{
-  color:#858d9b;
+  color:var(--wt-text-dim);
   font-size:11px;
-  margin-top:3px;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
+
+/* ---------- MODAL (higher paint order + equal max z-index = always on top) ---------- */
 #wt-modal{
   position:fixed;
   inset:0;
-  z-index:2147483646;
-  background:#08090ccc;
-  backdrop-filter:blur(8px);
+  z-index:${Z};
+  background:#050608cc;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
   display:flex;
-  align-items:center;
+  align-items:flex-end;
   justify-content:center;
-  padding:18px;
+  animation:wt-fade .15s ease;
 }
+@keyframes wt-fade{from{opacity:0}to{opacity:1}}
+
 #wt-box{
-  width:min(900px,100%);
-  max-height:90vh;
+  width:min(880px,100%);
+  max-height:88vh;
   overflow:hidden;
-  background:#111318;
-  border:1px solid #30343d;
-  border-radius:16px;
-  box-shadow:0 25px 80px #000d;
+  background:var(--wt-panel);
+  backdrop-filter:blur(24px) saturate(160%);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid var(--wt-border);
+  border-radius:22px 22px 0 0;
+  box-shadow:0 -20px 60px #000d;
+  animation:wt-slide .2s cubic-bezier(.2,.9,.3,1.1);
 }
+@keyframes wt-slide{
+  from{transform:translateY(24px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+
+#wt-box-grip{
+  width:36px;
+  height:4px;
+  background:#ffffff26;
+  border-radius:99px;
+  margin:10px auto 0;
+}
+
 #wt-box-head{
-  padding:15px 17px;
-  border-bottom:1px solid #292d35;
+  padding:12px 18px 14px;
+  border-bottom:1px solid var(--wt-border-soft);
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -147,99 +248,137 @@ const css=`
   font-weight:700;
 }
 #wt-box-close{
-  border:1px solid #30343d;
-  background:#191c22;
-  color:#ddd;
-  border-radius:8px;
-  padding:6px 10px;
+  border:1px solid var(--wt-border);
+  background:#ffffff0d;
+  color:#e2e5eb;
+  border-radius:10px;
+  padding:7px 12px;
   cursor:pointer;
+  font-size:12.5px;
+  font-weight:600;
 }
+#wt-box-close:active{background:#ffffff1f}
+
 #wt-content{
-  padding:16px;
+  padding:16px 18px 22px;
   overflow:auto;
-  max-height:calc(90vh - 62px);
+  max-height:calc(88vh - 78px);
 }
+
 .wt-card{
-  background:#181b21;
-  border:1px solid #292d35;
-  border-radius:11px;
-  padding:13px;
+  background:var(--wt-card);
+  border:1px solid var(--wt-border-soft);
+  border-radius:13px;
+  padding:13px 14px;
   margin-bottom:9px;
 }
 .wt-label{
-  color:#858d9b;
+  color:var(--wt-text-dim);
   font-size:10px;
   text-transform:uppercase;
-  letter-spacing:.06em;
+  letter-spacing:.07em;
   margin-bottom:5px;
+  font-weight:700;
 }
 .wt-value{
-  color:#f2f4f8;
+  color:var(--wt-text);
   font-size:13px;
+  line-height:1.5;
   word-break:break-word;
 }
 .wt-url{
-  color:#8ab4ff;
+  color:var(--wt-accent);
   text-decoration:none;
   word-break:break-all;
 }
 .wt-url:hover{text-decoration:underline}
 .wt-copy{
   float:right;
-  background:#22262e;
-  border:1px solid #363b45;
+  background:#ffffff0d;
+  border:1px solid var(--wt-border);
   color:#dce1e8;
-  border-radius:7px;
-  padding:5px 8px;
+  border-radius:9px;
+  padding:5px 10px;
   cursor:pointer;
   font-size:11px;
+  font-weight:600;
+  transition:background .15s;
 }
+.wt-copy:active{background:#ffffff1f}
+
 .wt-stat-grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
   gap:9px;
 }
 .wt-stat{
-  background:#181b21;
-  border:1px solid #292d35;
-  border-radius:10px;
-  padding:13px;
+  background:var(--wt-card);
+  border:1px solid var(--wt-border-soft);
+  border-radius:13px;
+  padding:14px;
 }
 .wt-stat-num{
-  font-size:20px;
-  font-weight:700;
+  font-size:21px;
+  font-weight:800;
+  background:linear-gradient(135deg,#fff,#9db4ff);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
 }
 .wt-stat-label{
-  color:#858d9b;
+  color:var(--wt-text-dim);
   font-size:11px;
   margin-top:3px;
+  font-weight:600;
 }
+
 .wt-table{
   width:100%;
   border-collapse:collapse;
   font-size:12px;
 }
 .wt-table th,.wt-table td{
-  border-bottom:1px solid #292d35;
+  border-bottom:1px solid var(--wt-border-soft);
   padding:9px 7px;
   text-align:left;
   vertical-align:top;
 }
 .wt-table th{
-  color:#8d95a3;
-  font-weight:600;
+  color:var(--wt-text-dim);
+  font-weight:700;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
 }
 .wt-preview{
   width:100%;
-  max-height:240px;
+  max-height:230px;
   object-fit:contain;
-  background:#0b0c0f;
-  border-radius:8px;
+  background:#050608;
+  border-radius:10px;
   margin-top:8px;
+  border:1px solid var(--wt-border-soft);
 }
+
+.wt-empty{
+  text-align:center;
+  color:var(--wt-text-dim);
+  font-size:12.5px;
+  padding:26px 10px;
+}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:99px}
+
 @media(max-width:600px){
-  #wt-app{right:10px;bottom:10px}
-  #wt-panel{width:calc(100vw - 20px)}
+  #wt-app{right:12px;bottom:14px}
+  #wt-panel{
+    right:auto;
+    left:50%;
+    transform:translateX(-50%);
+    width:calc(100vw - 22px);
+  }
+  #wt-box{border-radius:20px 20px 0 0}
 }
 `;
 
@@ -251,18 +390,21 @@ document.head.appendChild(style);
 root.id='wt-app';
 
 root.innerHTML=`
-<button id="wt-launch">Web Tools</button>
+<button id="wt-launch"><span class="wt-ico">⚡</span>Web Tools</button>
 
 <div id="wt-panel">
   <div id="wt-head">
     <div>
-      <div id="wt-title">Web Tools</div>
+      <div id="wt-title"><span class="wt-crown">✦</span>Web Tools</div>
       <div id="wt-sub">Browser inspection toolkit</div>
     </div>
-    <button id="wt-close">Close</button>
+    <button id="wt-close">✕</button>
   </div>
 
-  <input id="wt-search" placeholder="Search tools...">
+  <div id="wt-search-wrap">
+    <span id="wt-search-ico">🔍</span>
+    <input id="wt-search" placeholder="Search tools...">
+  </div>
 
   <div id="wt-tools"></div>
 </div>
@@ -283,6 +425,7 @@ const modal=(title,html)=>{
 
   m.innerHTML=`
     <div id="wt-box">
+      <div id="wt-box-grip"></div>
       <div id="wt-box-head">
         <div id="wt-box-title">${esc(title)}</div>
         <button id="wt-box-close">Close</button>
@@ -291,6 +434,7 @@ const modal=(title,html)=>{
     </div>
   `;
 
+  // Appended last -> always paints above #wt-app even at equal z-index
   document.body.appendChild(m);
 
   m.querySelector('#wt-box-close').onclick=()=>m.remove();
@@ -314,13 +458,16 @@ const urlHTML=url=>{
   return `<a class="wt-url" href="${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
 };
 
-const addTool=(title,description,fn)=>{
+const addTool=(icon,title,description,fn)=>{
   const b=document.createElement('button');
   b.className='wt-tool';
   b.dataset.search=(title+' '+description).toLowerCase();
   b.innerHTML=`
-    <div class="wt-tool-title">${esc(title)}</div>
-    <div class="wt-tool-desc">${esc(description)}</div>
+    <div class="wt-tool-ico">${icon}</div>
+    <div class="wt-tool-body">
+      <div class="wt-tool-title">${esc(title)}</div>
+      <div class="wt-tool-desc">${esc(description)}</div>
+    </div>
   `;
   b.onclick=fn;
   tools.appendChild(b);
@@ -340,18 +487,20 @@ const card=(label,value,copyValue)=>{
   `;
 };
 
+const empty=text=>`<div class="wt-empty">${esc(text)}</div>`;
+
 const bindCopies=()=>{
   document.querySelectorAll('#wt-content .wt-copy').forEach(b=>{
     b.onclick=async()=>{
       const ok=await copy(b.dataset.copy);
-      b.textContent=ok?'Copied':'Failed';
+      b.textContent=ok?'Copied ✓':'Failed';
       setTimeout(()=>b.textContent='Copy',1200);
     };
   });
 };
 
 addTool(
-  'Page Overview',
+  '📄','Page Overview',
   'Title, URL, domain and document statistics',
   ()=>{
     const rows=[
@@ -380,7 +529,7 @@ addTool(
 );
 
 addTool(
-  'Links',
+  '🔗','Links',
   'List all links with clickable destinations',
   ()=>{
     const data=[...document.links];
@@ -397,13 +546,13 @@ addTool(
               <td>${urlHTML(a.href)}</td>
             </tr>`).join('')}
         </table>`
-      : '<div class="wt-card">No links found.</div>'
+      : empty('No links found.')
     );
   }
 );
 
 addTool(
-  'Images',
+  '🖼️','Images',
   'View images with clickable source URLs',
   ()=>{
     const data=[...document.images];
@@ -420,13 +569,13 @@ addTool(
           <div class="wt-value">${img.naturalWidth||'?'} × ${img.naturalHeight||'?'}</div>
         </div>
       `).join('')
-      : '<div class="wt-card">No images found.</div>'
+      : empty('No images found.')
     );
   }
 );
 
 addTool(
-  'Forms',
+  '📝','Forms',
   'Inspect forms, actions, methods and fields',
   ()=>{
     const data=[...document.forms];
@@ -454,13 +603,13 @@ addTool(
           </table>
         </div>
       `).join('')
-      : '<div class="wt-card">No forms found.</div>'
+      : empty('No forms found.')
     );
   }
 );
 
 addTool(
-  'Headings',
+  '🧭','Headings',
   'View document heading structure',
   ()=>{
     const data=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
@@ -474,20 +623,20 @@ addTool(
           <div class="wt-value">${esc(h.innerText.trim())}</div>
         </div>
       `).join('')
-      : '<div class="wt-card">No headings found.</div>'
+      : empty('No headings found.')
     );
   }
 );
 
 addTool(
-  'DOM Inspector',
+  '🎯','DOM Inspector',
   'Tap an element to inspect basic DOM information',
   ()=>{
     let active=true;
 
     const st=document.createElement('style');
     st.id='wt-inspector-style';
-    st.textContent='[data-wt-highlight]{outline:3px solid #5b9cff!important;outline-offset:2px!important;cursor:crosshair!important}';
+    st.textContent='[data-wt-highlight]{outline:3px solid #7c9eff!important;outline-offset:2px!important;cursor:crosshair!important}';
     document.head.appendChild(st);
 
     const over=e=>{
@@ -557,23 +706,23 @@ const storageViewer=(name,store)=>{
         <div class="wt-value">${esc(r[1])}</div>
       </div>
     `).join('')
-    : '<div class="wt-card">Storage is empty.</div>'
+    : empty('Storage is empty.')
   );
 
   bindCopies();
 };
 
-addTool('Local Storage','View current site localStorage keys and values',()=>storageViewer('Local Storage',localStorage));
-addTool('Session Storage','View current site sessionStorage keys and values',()=>storageViewer('Session Storage',sessionStorage));
+addTool('💾','Local Storage','View current site localStorage keys and values',()=>storageViewer('Local Storage',localStorage));
+addTool('🗂️','Session Storage','View current site sessionStorage keys and values',()=>storageViewer('Session Storage',sessionStorage));
 
 addTool(
-  'Performance',
+  '⏱️','Performance',
   'Navigation timing and page load metrics',
   ()=>{
     const p=performance.getEntriesByType('navigation')[0];
 
     if(!p){
-      modal('Performance','<div class="wt-card">Navigation timing unavailable.</div>');
+      modal('Performance',empty('Navigation timing unavailable.'));
       return;
     }
 
@@ -590,7 +739,7 @@ addTool(
 );
 
 addTool(
-  'Resources',
+  '📦','Resources',
   'Inspect resources loaded by the current page',
   ()=>{
     const data=performance.getEntriesByType('resource');
@@ -608,13 +757,13 @@ addTool(
               <td>${urlHTML(x.name)}</td>
             </tr>`).join('')}
         </table>`
-      : '<div class="wt-card">No resource entries available.</div>'
+      : empty('No resource entries available.')
     );
   }
 );
 
 addTool(
-  'Cookies',
+  '🍪','Cookies',
   'Show cookie access status without exposing cookie values',
   ()=>{
     modal(
@@ -629,7 +778,7 @@ addTool(
 );
 
 addTool(
-  'Copy Page Text',
+  '📋','Copy Page Text',
   'Copy visible page text to clipboard',
   async()=>{
     const ok=await copy(document.body.innerText||'');
@@ -638,22 +787,7 @@ addTool(
 );
 
 addTool(
-  'Page Source',
-  'Open the current document HTML in a readable viewer',
-  ()=>{
-    modal(
-      'Document HTML',
-      `<div class="wt-card">
-        <button class="wt-copy" data-copy="${esc(document.documentElement.outerHTML)}">Copy HTML</button>
-        <pre style="white-space:pre-wrap;word-break:break-word;color:#cdd3dd;font-size:11px;line-height:1.5">${esc(document.documentElement.outerHTML)}</pre>
-      </div>`
-    );
-    bindCopies();
-  }
-);
-
-addTool(
-  'Scripts',
+  '⚙️','Scripts',
   'List JavaScript files used by the page',
   ()=>{
     const data=[...document.scripts];
@@ -669,7 +803,7 @@ addTool(
           </div>
         </div>
       `).join('')
-      : '<div class="wt-card">No scripts found.</div>'
+      : empty('No scripts found.')
     );
   }
 );
@@ -678,12 +812,12 @@ search.oninput=()=>{
   const q=search.value.toLowerCase().trim();
 
   tools.querySelectorAll('.wt-tool').forEach(b=>{
-    b.style.display=!q||b.dataset.search.includes(q)?'block':'none';
+    b.style.display=!q||b.dataset.search.includes(q)?'flex':'none';
   });
 };
 
 root.querySelector('#wt-launch').onclick=()=>{
-  panel.style.display=panel.style.display==='none'?'block':'none';
+  panel.style.display=panel.style.display==='none'||!panel.style.display?'block':'none';
 };
 
 root.querySelector('#wt-close').onclick=()=>{
