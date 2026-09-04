@@ -908,7 +908,7 @@ const css = `
 
   font-size: 11px !important;
   line-height: 1.35 !important;
-
+  min-height: 0 !important;
   white-space: pre !important;
   tab-size: 2 !important;
 
@@ -1043,7 +1043,6 @@ const css = `
   flex-direction: column;
   gap: 7px;
   pointer-events: none;
-  width: min(360px, calc(100vw - 36px));
 }
 
 .wt-toast {
@@ -1055,75 +1054,6 @@ const css = `
   box-shadow: 0 15px 40px #000b;
   font-size: 11px;
   animation: wtToastIn .18s ease;
-  box-sizing: border-box;
-}
-
-.wt-download-notice {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 54px;
-  padding: 10px 11px;
-  overflow: hidden;
-  cursor: grab;
-  pointer-events: auto;
-  user-select: none;
-  touch-action: pan-y;
-  transform: translateX(0);
-  transition: transform .22s ease, opacity .22s ease;
-}
-
-.wt-download-notice:active {
-  cursor: grabbing;
-}
-
-.wt-download-icon {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border: 1px solid var(--wt-border);
-  border-radius: 9px;
-  background: #ffffff08;
-}
-
-.wt-download-main {
-  min-width: 0;
-  flex: 1;
-}
-
-.wt-download-title {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--wt-text);
-}
-
-.wt-download-file {
-  margin-top: 2px;
-  color: var(--wt-muted);
-  font-size: 9px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wt-download-view {
-  flex: 0 0 auto;
-  border: 1px solid var(--wt-border);
-  border-radius: 8px;
-  padding: 6px 8px;
-  background: #ffffff08;
-  color: var(--wt-text);
-  font-size: 9px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.wt-download-view:hover {
-  background: var(--wt-accent-soft);
-  border-color: var(--wt-accent);
 }
 
 @keyframes wtToastIn {
@@ -1240,10 +1170,43 @@ const css = `
 }
 
 @media print {
+  /* Never let Web Tools itself appear in the exported document. */
   #${APP_ID},
   #wt-pro-modal,
   #wt-pro-toast-container {
     display: none !important;
+  }
+
+  /*
+   * Preserve the actual webpage appearance in Chrome print/PDF.
+   * Chrome may otherwise replace/omit page background colours and
+   * images during print preview.
+   */
+  html,
+  body,
+  body * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /*
+   * Do not force a white page background here.
+   * The site's own background, gradients and images must win.
+   */
+  html,
+  body {
+    background-color: transparent !important;
+  }
+
+  /*
+   * Keep visual backgrounds, gradients and images eligible for print.
+   * This works together with Chrome's "Background graphics" option.
+   */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 `;
@@ -1367,6 +1330,9 @@ root.innerHTML = `
 
 document.body.appendChild(root);
 
+/* Start in the original dark theme without touching the host page. */
+root.dataset.wtTheme = state.theme;
+
 const panel = root.querySelector('#wt-pro-panel');
 const toolsContainer = root.querySelector('#wt-pro-tools');
 const searchInput = root.querySelector('#wt-pro-search');
@@ -1375,7 +1341,8 @@ const searchInput = root.querySelector('#wt-pro-search');
    TOAST
    ========================================================= */
 
-const getToastContainer = () => {
+const toast = message => {
+
   let container = document.getElementById(
     'wt-pro-toast-container'
   );
@@ -1386,136 +1353,16 @@ const getToastContainer = () => {
     document.body.appendChild(container);
   }
 
-  return container;
-};
-
-const toast = message => {
-  const container = getToastContainer();
   const item = document.createElement('div');
 
   item.className = 'wt-toast';
   item.textContent = message;
+
   container.appendChild(item);
 
   setTimeout(() => {
     item.remove();
   }, 2200);
-};
-
-const openDownloads = () => {
-  try {
-    const tab = window.open(
-      'chrome://downloads/',
-      '_blank'
-    );
-
-    if (!tab) {
-      throw new Error('blocked');
-    }
-
-    return true;
-  } catch {
-    toast('Open Downloads with Ctrl + J');
-    return false;
-  }
-};
-
-const showDownloadNotice = filename => {
-  const container = getToastContainer();
-  const item = document.createElement('div');
-
-  item.className = 'wt-toast wt-download-notice';
-  item.setAttribute('role', 'status');
-  item.innerHTML = `
-    <div class="wt-download-icon" aria-hidden="true">
-      ${icon(ICONS.download, 15)}
-    </div>
-
-    <div class="wt-download-main">
-      <div class="wt-download-title">Download started</div>
-      <div class="wt-download-file" title="${escAttr(filename)}">
-        ${esc(filename)}
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="wt-download-view"
-      aria-label="View downloads"
-    >
-      View downloads
-    </button>
-  `;
-
-  container.appendChild(item);
-
-  item.querySelector('.wt-download-view')
-    ?.addEventListener('click', event => {
-      event.stopPropagation();
-      openDownloads();
-    });
-
-  let startX = 0;
-  let currentX = 0;
-  let dragging = false;
-
-  const finishSwipe = () => {
-    if (!dragging) return;
-    dragging = false;
-
-    if (Math.abs(currentX) > 90) {
-      item.style.transform = `translateX(${
-        currentX < 0 ? '-120%' : '120%'
-      })`;
-      item.style.opacity = '0';
-      setTimeout(() => item.remove(), 220);
-    } else {
-      item.style.transform = '';
-    }
-  };
-
-  item.addEventListener('pointerdown', event => {
-    if (event.target.closest('button')) return;
-    dragging = true;
-    startX = event.clientX;
-    currentX = 0;
-    item.style.transition = 'none';
-    try {
-      item.setPointerCapture(event.pointerId);
-    } catch {}
-  });
-
-  item.addEventListener('pointermove', event => {
-    if (!dragging) return;
-    currentX = event.clientX - startX;
-    if (Math.abs(currentX) > 8) {
-      item.style.transform = `translateX(${currentX}px)`;
-      item.style.opacity = String(
-        Math.max(.35, 1 - Math.abs(currentX) / 220)
-      );
-    }
-  });
-
-  item.addEventListener('pointerup', () => {
-    item.style.transition = '';
-    finishSwipe();
-  });
-
-  item.addEventListener('pointercancel', () => {
-    item.style.transition = '';
-    currentX = 0;
-    finishSwipe();
-  });
-
-  const timer = setTimeout(() => {
-    item.style.transform = 'translateX(0)';
-    item.style.opacity = '0';
-    setTimeout(() => item.remove(), 220);
-  }, 5000);
-
-  item.addEventListener('pointerdown', () => {
-    clearTimeout(timer);
-  }, { once: true });
 };
 
 /* =========================================================
@@ -3889,12 +3736,6 @@ addTool({
     const html =
       document.documentElement.outerHTML;
 
-    // Keep the real DOM untouched; only compact repeated blank lines
-    // in the viewer so formatted pages remain easy to scan.
-    const displayHTML = html
-      .replace(/^[\t ]+$/gm, '')
-      .replace(/\n(?:[\t ]*\n){2,}/g, '\n\n');
-
     openModal(
       'Document HTML',
 
@@ -3905,7 +3746,7 @@ addTool({
 
           <button
             class="wt-copy"
-            data-copy="${escAttr(displayHTML)}"
+            data-copy="${escAttr(html)}"
           >
             Copy HTML
           </button>
@@ -3913,7 +3754,7 @@ addTool({
         </div>
 
         <pre class="wt-code">${highlightHTML(
-          displayHTML
+          html
         )}</pre>
 
       </div>
@@ -4113,11 +3954,6 @@ addTool({
 
       try {
         window.print();
-        // print() returns after the print dialog closes. At that point
-        // the user has returned to the page, so show the download notice.
-        showDownloadNotice(
-          `${safeFilename(document.title || 'page')}.pdf`
-        );
       } catch {
         toast(
           'Print dialog could not be opened'
@@ -5265,8 +5101,6 @@ const exportFrontend = async () => {
       zipBlob,
       filename
     );
-
-    showDownloadNotice(filename);
 
     update(
       skipped
