@@ -1,668 +1,607 @@
-
 (()=>{
 'use strict';
 
-/* ============================================================
-   ADVANCED WEB TOOLS — UNIFIED DEVTOOLS
-   ------------------------------------------------------------
-   Page-level DevTools-style toolkit.
-
-   IMPORTANT BROWSER LIMITATIONS:
-   - Cannot access Chrome/Firefox DevTools privileged APIs.
-   - Cannot see arbitrary request headers from every browser request.
-   - Cannot read cross-origin response bodies.
-   - Cannot inspect server-side/backend source.
-   - Network capture covers requests observable from page JS:
-       fetch()
-       XMLHttpRequest
-       PerformanceResourceTiming
-   ============================================================ */
-
-if(window.__WEBTOOLS_V2){
-  window.__WEBTOOLS_V2.destroy();
+if(window.__WEBTOOLS){
+  window.__WEBTOOLS.remove();
+  delete window.__WEBTOOLS;
   return;
 }
 
-const state={
-  network:[],
-  console:[],
-  selectedElement:null,
-  networkEnabled:true,
-  consoleEnabled:true,
-  destroyed:false,
-  original:{
-    fetch:window.fetch,
-    XHR:{
-      open:XMLHttpRequest.prototype.open,
-      send:XMLHttpRequest.prototype.send,
-      setRequestHeader:XMLHttpRequest.prototype.setRequestHeader
-    },
-    console:{
-      log:console.log,
-      info:console.info,
-      warn:console.warn,
-      error:console.error,
-      debug:console.debug
-    }
-  }
-};
-
 const root=document.createElement('div');
-window.__WEBTOOLS_V2=root;
+window.__WEBTOOLS=root;
 
-document.body.appendChild(root);
+const esc=v=>String(v??'')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;');
 
 const Z=2147483647;
 
-const esc=v=>String(v??'')
-.replace(/&/g,'&amp;')
-.replace(/</g,'&lt;')
-.replace(/>/g,'&gt;')
-.replace(/"/g,'&quot;');
-
-const attrEsc=esc;
-
-const ic=(paths,size=17)=>{
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-};
+/* ---------- Minimal line-icon set (no emoji, single stroke, currentColor) ---------- */
+const ic=(paths,size=18)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 
 const ICONS={
   brand:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
   search:'<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   close:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-  network:'<circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 11l9-5"/><path d="M7.5 13l9 5"/>',
-  source:'<polyline points="8 9 4 12 8 15"/><polyline points="16 9 20 12 16 15"/><line x1="14" y1="7" x2="10" y2="17"/>',
-  console:'<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
-  storage:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
-  inspector:'<circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
-  elements:'<path d="M4 5h16M4 12h10M4 19h16"/><circle cx="18" cy="12" r="2"/>',
-  css:'<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h5M8 16h8"/>',
-  js:'<path d="M4 4h16v16H4z"/><path d="M9 17v-1.5a2 2 0 0 1 4 0V17"/><path d="M15 17v-4h2"/>',
-  performance:'<polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/>',
   overview:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
-  download:'<path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/>',
-  pdf:'<path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 15h2a2 2 0 0 0 0-4H8v7"/><path d="M13 11v7h1a3.5 3.5 0 0 0 0-7z"/>',
+  download:'<path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14a2 2 0 0 0 2-2v-2"/><path d="M3 17v2a2 2 0 0 0 2 2"/>',
+  pdf:'<path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 15h2a2 2 0 0 0 0-4H8v7"/><path d="M13 11v7h1a3.5 3.5 0 0 0 0-7z"/><line x1="19" y1="11" x2="16" y2="11"/><line x1="16" y1="11" x2="16" y2="18"/>',
   links:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   images:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
-  forms:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  forms:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 14 11 16 15 12"/>',
   headings:'<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
-  resources:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22" x2="12" y2="12"/>',
+  inspector:'<circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
+  localStorage:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/>',
+  sessionStorage:'<path d="M22 18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  performance:'<polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/>',
+  resources:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  cookies:'<path d="M12 22s7-3.5 7-9V6l-7-3-7 3v7c0 5.5 7 9 7 9z"/>',
   copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-  refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15A9 9 0 0 1 5.64 18.36L1 14"/>',
-  trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V3h6v3"/>',
-  back:'<polyline points="15 18 9 12 15 6"/>',
-  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+  source:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  scripts:'<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'
 };
 
-/* ============================================================
-   CSS
-   ============================================================ */
-
 const css=`
-#wt-v2{
-  --bg:#0b0d10;
-  --panel:#111419;
-  --panel2:#171a20;
-  --panel3:#1c2027;
-  --border:#292e37;
-  --border2:#20242b;
-  --text:#e8ebef;
-  --muted:#8b94a3;
-  --blue:#78a2ff;
-  --green:#63d297;
-  --yellow:#e6b75c;
-  --red:#ff7373;
-  --purple:#c99cff;
-  --cyan:#73d8e8;
+:root{
+  --wt-panel:#101216f5;
+  --wt-card:#171a1f;
+  --wt-border:#252932;
+  --wt-border-soft:#1c2028;
+  --wt-text:#eef0f4;
+  --wt-text-dim:#868f9f;
+  --wt-accent:#6f93f2;
+  --wt-accent-soft:#6f93f21c;
+  --wt-radius:16px;
+  --wt-safe-b:env(safe-area-inset-bottom,0px);
+  --wt-syn-tag:#ff7b72;
+  --wt-syn-attr:#d2a8ff;
+  --wt-syn-string:#a5d6ff;
+  --wt-syn-punct:#8b949e;
+  --wt-syn-comment:#8b949e;
+}
 
+#wt-app{
   position:fixed;
   right:16px;
-  bottom:16px;
+  bottom:calc(16px + var(--wt-safe-b));
   z-index:${Z};
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;
-  color:var(--text);
-  font-size:13px;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  color:var(--wt-text);
+  -webkit-tap-highlight-color:transparent;
 }
-
-#wt-v2 *{box-sizing:border-box}
 
 #wt-launch{
-  display:flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  position:fixed !important;
-  right:16px !important;
-  bottom:16px !important;
-  z-index:2147483647 !important;
+  display:flex;
   align-items:center;
   gap:8px;
-  border:1px solid #ffffff18;
-  background:#101318;
+  border:1px solid #ffffff14;
+  background:linear-gradient(160deg,#181b21,#0c0e12);
   color:#fff;
   border-radius:999px;
-  padding:11px 16px;
-  font-weight:650;
+  padding:12px 17px;
+  font-size:13.5px;
+  font-weight:600;
+  letter-spacing:.01em;
+  box-shadow:0 10px 28px #0009,inset 0 1px 0 #ffffff10;
   cursor:pointer;
-  box-shadow:0 14px 38px #000b;
-  pointer-events:auto !important;
+  transition:transform .15s ease;
 }
-
-root.innerHTML=`
-...
-`;
+#wt-launch:active{transform:scale(.96)}
+#wt-launch svg{opacity:.9}
 
 #wt-panel{
   display:none;
   position:fixed;
   right:16px;
-  bottom:68px;
-  width:470px;
-  max-width:calc(100vw - 24px);
-  height:min(720px,82vh);
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:16px;
-  box-shadow:0 30px 90px #000d;
+  bottom:calc(76px + var(--wt-safe-b));
+  left:auto;
+  width:380px;
+  max-width:calc(100vw - 32px);
+  max-height:74vh;
   overflow:hidden;
+  background:var(--wt-panel);
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  border:1px solid var(--wt-border);
+  border-radius:var(--wt-radius);
+  box-shadow:0 25px 70px #000c,0 0 0 1px #ffffff08 inset;
+  animation:wt-pop .18s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes wt-pop{
+  from{opacity:0;transform:translateY(8px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
 }
 
-#wt-panel.open{display:flex;flex-direction:column}
-
-#wt-top{
-  height:50px;
-  flex:none;
+#wt-head{
+  padding:17px 17px 13px;
+  border-bottom:1px solid var(--wt-border-soft);
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:0 12px;
-  border-bottom:1px solid var(--border);
-  background:#0e1014;
+  justify-content:space-between;
 }
-
-#wt-brand{
+#wt-title{
+  font-size:15.5px;
+  font-weight:700;
   display:flex;
   align-items:center;
-  gap:7px;
-  font-weight:750;
-  white-space:nowrap;
+  gap:8px;
 }
-
-#wt-brand svg{color:var(--blue)}
-
-#wt-search{
-  flex:1;
-  min-width:0;
-  background:#080a0d;
-  border:1px solid var(--border);
-  color:#fff;
-  border-radius:8px;
-  padding:7px 9px;
-  outline:none;
+#wt-title svg{color:var(--wt-accent)}
+#wt-sub{
+  color:var(--wt-text-dim);
+  font-size:11px;
+  margin-top:3px;
+  font-weight:500;
 }
-
-#wt-search:focus{border-color:#6f93f270}
-
-.wt-icon-btn{
-  width:30px;
-  height:30px;
-  border:1px solid var(--border);
-  background:#ffffff07;
-  color:var(--muted);
-  border-radius:8px;
+#wt-close{
+  background:#ffffff0d;
+  color:#cfd4de;
+  border:1px solid #ffffff14;
+  width:29px;
+  height:29px;
+  border-radius:9px;
+  cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
+  transition:background .15s;
 }
+#wt-close:active{background:#ffffff1f}
 
-.wt-icon-btn:hover{
-  color:#fff;
-  background:#ffffff0e;
-}
-
-#wt-tabs{
-  flex:none;
-  height:42px;
-  display:flex;
-  overflow:auto;
-  border-bottom:1px solid var(--border);
-  background:#0e1014;
-}
-
-.wt-tab{
-  flex:none;
-  border:0;
-  border-bottom:2px solid transparent;
-  background:none;
-  color:var(--muted);
-  padding:0 12px;
-  font-size:11px;
-  font-weight:650;
-  cursor:pointer;
-}
-
-.wt-tab.active{
-  color:#fff;
-  border-bottom-color:var(--blue);
-}
-
-.wt-tab-badge{
-  margin-left:4px;
-  color:var(--blue);
-}
-
-#wt-toolbar{
-  flex:none;
-  min-height:42px;
+#wt-search-wrap{
+  margin:13px;
+  position:relative;
   display:flex;
   align-items:center;
-  gap:6px;
-  padding:6px 9px;
-  border-bottom:1px solid var(--border2);
-  background:#12151a;
 }
-
-.wt-select,.wt-input{
-  background:#090b0e;
-  color:#dfe4eb;
-  border:1px solid var(--border);
-  border-radius:7px;
-  padding:6px 8px;
+#wt-search{
+  width:100%;
+  box-sizing:border-box;
+  background:#0000003d;
+  border:1px solid var(--wt-border);
+  color:#fff;
+  padding:10px 12px 10px 34px;
+  border-radius:11px;
   outline:none;
-  font-size:11px;
+  font-size:13.5px;
+  transition:border-color .15s,background .15s;
+}
+#wt-search::placeholder{color:#6d7482}
+#wt-search:focus{border-color:var(--wt-accent);background:#00000055}
+#wt-search-ico{
+  position:absolute;
+  left:11px;
+  color:var(--wt-text-dim);
+  display:flex;
+  pointer-events:none;
 }
 
-.wt-input{min-width:0;flex:1}
+#wt-tools{
+  padding:0 11px 13px;
+  overflow:auto;
+  max-height:52vh;
+  display:grid;
+  gap:5px;
+}
 
-.wt-small-btn{
-  border:1px solid var(--border);
+.wt-tool{
+  width:100%;
+  text-align:left;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 11px;
+  background:#ffffff05;
+  border:1px solid transparent;
+  color:var(--wt-text);
+  border-radius:12px;
+  cursor:pointer;
+  transition:.15s;
+}
+.wt-tool:hover{background:var(--wt-accent-soft);border-color:#6f93f230}
+.wt-tool:active{transform:scale(.985)}
+.wt-tool-ico{
+  flex:0 0 auto;
+  width:32px;
+  height:32px;
+  border-radius:9px;
   background:#ffffff08;
-  color:#cfd5de;
-  border-radius:7px;
-  padding:6px 9px;
+  border:1px solid var(--wt-border-soft);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--wt-text-dim);
+}
+.wt-tool-body{min-width:0}
+.wt-tool-title{
+  font-size:13px;
+  font-weight:600;
+}
+.wt-tool-desc{
+  color:var(--wt-text-dim);
+  font-size:11px;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#wt-modal{
+  position:fixed;
+  inset:0;
+  z-index:${Z};
+  background:#050608cc;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  animation:wt-fade .15s ease;
+}
+@keyframes wt-fade{from{opacity:0}to{opacity:1}}
+
+#wt-box{
+  width:min(880px,100%);
+  max-height:88vh;
+  overflow:hidden;
+  background:var(--wt-panel);
+  backdrop-filter:blur(24px) saturate(160%);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid var(--wt-border);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -20px 60px #000d;
+  animation:wt-slide .2s cubic-bezier(.2,.9,.3,1.1);
+  padding-bottom:var(--wt-safe-b);
+}
+@keyframes wt-slide{
+  from{transform:translateY(24px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+
+#wt-box-grip{
+  width:34px;
+  height:4px;
+  background:#ffffff24;
+  border-radius:99px;
+  margin:9px auto 0;
+}
+
+#wt-box-head{
+  padding:11px 17px 13px;
+  border-bottom:1px solid var(--wt-border-soft);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+#wt-box-title{
+  font-size:14.5px;
+  font-weight:700;
+}
+#wt-box-close{
+  border:1px solid var(--wt-border);
+  background:#ffffff0d;
+  color:#e2e5eb;
+  border-radius:9px;
+  padding:6px 11px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+}
+#wt-box-close:active{background:#ffffff1f}
+
+#wt-content{
+  padding:15px 17px 20px;
+  overflow:auto;
+  max-height:calc(88vh - 74px);
+}
+
+.wt-card{
+  background:var(--wt-card);
+  border:1px solid var(--wt-border-soft);
+  border-radius:12px;
+  padding:12px 13px;
+  margin-bottom:8px;
+}
+.wt-label{
+  color:var(--wt-text-dim);
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin-bottom:5px;
+  font-weight:700;
+}
+.wt-value{
+  color:var(--wt-text);
+  font-size:12.5px;
+  line-height:1.5;
+  word-break:break-word;
+}
+.wt-url{
+  color:var(--wt-accent);
+  text-decoration:none;
+  word-break:break-all;
+}
+.wt-url:hover{text-decoration:underline}
+.wt-copy{
+  float:right;
+  background:#ffffff0d;
+  border:1px solid var(--wt-border);
+  color:#dce1e8;
+  border-radius:8px;
+  padding:5px 10px;
   cursor:pointer;
   font-size:10.5px;
-  font-weight:650;
+  font-weight:600;
+  transition:background .15s;
 }
+.wt-copy:active{background:#ffffff1f}
 
-.wt-small-btn:hover{background:#ffffff12}
-
-.wt-small-btn.danger{color:var(--red)}
-
-#wt-view{
-  flex:1;
-  min-height:0;
-  overflow:auto;
-  background:#0b0d10;
+.wt-stat-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.wt-stat{
+  background:var(--wt-card);
+  border:1px solid var(--wt-border-soft);
+  border-radius:12px;
+  padding:13px;
+}
+.wt-stat-num{
+  font-size:20px;
+  font-weight:800;
+  color:var(--wt-text);
+}
+.wt-stat-label{
+  color:var(--wt-text-dim);
+  font-size:10.5px;
+  margin-top:3px;
+  font-weight:600;
 }
 
 .wt-table{
   width:100%;
   border-collapse:collapse;
-  table-layout:fixed;
+  font-size:11.5px;
 }
-
-.wt-table th,
-.wt-table td{
-  border-bottom:1px solid #191d23;
+.wt-table th,.wt-table td{
+  border-bottom:1px solid var(--wt-border-soft);
   padding:8px 7px;
   text-align:left;
   vertical-align:top;
-  font-size:10.5px;
 }
-
 .wt-table th{
-  position:sticky;
-  top:0;
-  z-index:2;
-  background:#12151a;
-  color:var(--muted);
-  text-transform:uppercase;
-  font-size:9px;
-  letter-spacing:.05em;
-}
-
-.wt-row{cursor:pointer}
-.wt-row:hover{background:#ffffff06}
-
-.wt-url{
-  color:var(--blue);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  display:block;
-}
-
-.wt-method{
-  color:var(--purple);
-  font-weight:750;
-}
-
-.wt-status-ok{color:var(--green);font-weight:700}
-.wt-status-bad{color:var(--red);font-weight:700}
-.wt-status-neutral{color:var(--yellow);font-weight:700}
-
-.wt-muted{color:var(--muted)}
-
-.wt-card{
-  margin:9px;
-  padding:11px;
-  background:var(--panel2);
-  border:1px solid var(--border2);
-  border-radius:10px;
-}
-
-.wt-card-title{
+  color:var(--wt-text-dim);
+  font-weight:700;
   font-size:10px;
   text-transform:uppercase;
-  letter-spacing:.06em;
-  color:var(--muted);
-  font-weight:750;
-  margin-bottom:6px;
+  letter-spacing:.04em;
 }
-
-.wt-value{
-  color:#e6e9ee;
-  line-height:1.55;
-  word-break:break-word;
-}
-
-.wt-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-  padding:9px;
-}
-
-.wt-stat{
-  background:var(--panel2);
-  border:1px solid var(--border2);
-  border-radius:10px;
-  padding:12px;
-}
-
-.wt-num{
-  font-size:19px;
-  font-weight:800;
-}
-
-.wt-stat-label{
-  color:var(--muted);
-  font-size:9.5px;
-  margin-top:3px;
-}
-
-.wt-code{
-  margin:0;
-  padding:13px;
-  white-space:pre;
-  overflow:auto;
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  font-size:10.5px;
-  line-height:1.65;
-  color:#cdd5df;
-}
-
-.wt-code-wrap{
-  margin:9px;
-  border:1px solid var(--border2);
-  border-radius:10px;
-  overflow:auto;
-  background:#080a0d;
-}
-
-.wt-code-head{
-  position:sticky;
-  top:0;
-  z-index:3;
-  padding:7px;
-  display:flex;
-  justify-content:flex-end;
-  background:#101318ee;
-  border-bottom:1px solid var(--border2);
-}
-
-.wt-copy{
-  border:1px solid var(--border);
-  background:#ffffff08;
-  color:#d8dee7;
-  border-radius:6px;
-  padding:5px 8px;
-  cursor:pointer;
-  font-size:10px;
-}
-
-.wt-tag{color:#ff7b72}
-.wt-attr{color:#d2a8ff}
-.wt-string{color:#a5d6ff}
-.wt-comment{color:#8b949e}
-.wt-punct{color:#8b949e}
-
-.wt-console{
-  padding:4px 0;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:10.5px;
-}
-
-.wt-console-line{
-  padding:7px 10px;
-  border-bottom:1px solid #171b21;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.wt-console-line.log{color:#d7dce4}
-.wt-console-line.info{color:var(--cyan)}
-.wt-console-line.warn{color:var(--yellow)}
-.wt-console-line.error{color:var(--red)}
-.wt-console-line.command{color:var(--purple)}
-.wt-console-time{color:#66707f;margin-right:7px}
-
-#wt-console-input{
-  position:sticky;
-  bottom:0;
+.wt-preview{
   width:100%;
-  border:0;
-  border-top:1px solid var(--border);
-  outline:none;
-  background:#080a0d;
-  color:#e7ebf0;
-  padding:10px;
-  font-family:ui-monospace,monospace;
-  font-size:11px;
-}
-
-.wt-tree{
-  padding:8px;
-  font-family:ui-monospace,monospace;
-  font-size:10.5px;
-}
-
-.wt-node{
-  margin-left:14px;
-  border-left:1px solid #252a32;
-  padding-left:8px;
-}
-
-.wt-node-line{
-  padding:4px 5px;
-  border-radius:5px;
-  cursor:pointer;
-}
-
-.wt-node-line:hover{background:#ffffff08}
-
-.wt-node-name{color:#ff7b72}
-.wt-node-attr{color:#d2a8ff}
-.wt-node-text{color:#a5d6ff}
-
-.wt-inspected{
-  outline:2px solid var(--blue)!important;
-  outline-offset:2px!important;
+  max-height:220px;
+  object-fit:contain;
+  background:#050608;
+  border-radius:9px;
+  margin-top:8px;
+  border:1px solid var(--wt-border-soft);
 }
 
 .wt-empty{
-  padding:35px 15px;
   text-align:center;
-  color:var(--muted);
+  color:var(--wt-text-dim);
+  font-size:12px;
+  padding:24px 10px;
+}
+
+.wt-progress{
+  height:6px;
+  background:#ffffff0a;
+  border:1px solid var(--wt-border-soft);
+  border-radius:99px;
+  overflow:hidden;
+  margin-top:10px;
+}
+.wt-progress-bar{
+  width:0%;
+  height:100%;
+  background:var(--wt-accent);
+  transition:width .18s ease;
+}
+.wt-status{
+  color:var(--wt-text-dim);
   font-size:11px;
+  margin-top:8px;
+}
+.wt-note{
+  color:var(--wt-text-dim);
+  font-size:11px;
+  line-height:1.55;
 }
 
 .wt-badge{
   display:inline-block;
-  border:1px solid var(--border);
-  background:#ffffff08;
-  border-radius:999px;
-  padding:2px 6px;
-  font-size:8.5px;
-  color:var(--muted);
-}
-
-.wt-badge.green{color:var(--green);border-color:#63d29730}
-.wt-badge.red{color:var(--red);border-color:#ff737330}
-.wt-badge.blue{color:var(--blue);border-color:#78a2ff30}
-
-.wt-split{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  min-height:100%;
-}
-
-.wt-list{
-  border-right:1px solid var(--border);
-  overflow:auto;
-}
-
-.wt-detail{
-  overflow:auto;
-  min-width:0;
-}
-
-.wt-list-item{
-  padding:9px;
-  border-bottom:1px solid #191d23;
-  cursor:pointer;
-}
-
-.wt-list-item:hover,
-.wt-list-item.active{
-  background:#ffffff08;
-}
-
-.wt-list-title{
-  font-size:10.5px;
-  font-weight:700;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.wt-list-sub{
-  margin-top:3px;
-  color:var(--muted);
   font-size:9px;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:99px;
+  background:#ffffff0d;
+  border:1px solid var(--wt-border-soft);
+  color:var(--wt-text-dim);
+  margin-left:5px;
+  text-transform:uppercase;
+  letter-spacing:.03em;
   white-space:nowrap;
 }
-
-.wt-resource-body{
-  padding:10px;
+.wt-badge-accent{
+  color:var(--wt-accent);
+  border-color:#6f93f240;
+  background:#6f93f214;
+}
+.wt-badge-warn{
+  color:#f0b429;
+  border-color:#f0b42940;
+  background:#f0b42914;
 }
 
-.wt-property{
-  display:grid;
-  grid-template-columns:90px 1fr;
-  gap:8px;
-  padding:6px 0;
-  border-bottom:1px solid #1b1f25;
-  font-size:10.5px;
+.wt-code-wrap{
+  position:relative;
+  max-height:58vh;
+  overflow:auto;
+  background:#0a0c10;
+  border:1px solid var(--wt-border-soft);
+  border-radius:12px;
 }
+.wt-code-toolbar{
+  position:sticky;
+  top:0;
+  z-index:2;
+  display:flex;
+  justify-content:flex-end;
+  padding:8px 10px;
+  background:#0a0c10ee;
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--wt-border-soft);
+}
+.wt-code-toolbar .wt-copy{float:none}
+.wt-code{
+  margin:0;
+  padding:14px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:11.5px;
+  line-height:1.65;
+  color:#c9d1d9;
+  white-space:pre;
+}
+.wt-c-tag{color:var(--wt-syn-tag)}
+.wt-c-attr{color:var(--wt-syn-attr)}
+.wt-c-string{color:var(--wt-syn-string)}
+.wt-c-punct{color:var(--wt-syn-punct)}
+.wt-c-comment{color:var(--wt-syn-comment);font-style:italic}
 
-.wt-property-key{color:var(--muted)}
-.wt-property-value{word-break:break-word}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:99px}
 
-@media(max-width:650px){
-  #wt-v2{right:8px;bottom:8px}
+@media(max-width:600px){
+  #wt-app{right:12px}
   #wt-panel{
-    right:8px;
-    bottom:60px;
-    width:calc(100vw - 16px);
-    height:82vh;
+    right:11px;
+    max-width:calc(100vw - 22px);
+    width:calc(100vw - 22px);
   }
+  #wt-box{border-radius:18px 18px 0 0}
 }
 
 @media print{
-  #wt-v2{display:none!important}
+  #wt-app,
+  #wt-modal{
+    display:none!important;
+  }
+
+  html,
+  body{
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  *,
+  *::before,
+  *::after{
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  @page{
+    margin:0;
+  }
 }
 `;
 
 const style=document.createElement('style');
-style.id='wt-v2-style';
+style.id='wt-style';
 style.textContent=css;
 document.head.appendChild(style);
 
-root.id='wt-v2';
+root.id='wt-app';
 
 root.innerHTML=`
-<button id="wt-launch">
-  ${ic(ICONS.brand,16)}
-  Web Tools
-</button>
+<button id="wt-launch">${ic(ICONS.brand,16)}Web Tools</button>
 
 <div id="wt-panel">
-
-  <div id="wt-top">
-    <div id="wt-brand">${ic(ICONS.brand,16)} DevTools</div>
-    <input id="wt-search" placeholder="Search current panel...">
-    <button class="wt-icon-btn" id="wt-refresh">${ic(ICONS.refresh,15)}</button>
-    <button class="wt-icon-btn" id="wt-close">${ic(ICONS.close,15)}</button>
+  <div id="wt-head">
+    <div>
+      <div id="wt-title">${ic(ICONS.brand,15)}Web Tools</div>
+      <div id="wt-sub">Browser inspection toolkit</div>
+    </div>
+    <button id="wt-close">${ic(ICONS.close,15)}</button>
   </div>
 
-  <div id="wt-tabs">
-    <button class="wt-tab active" data-tab="overview">Overview</button>
-    <button class="wt-tab" data-tab="network">Network <span class="wt-tab-badge" id="wt-network-count">0</span></button>
-    <button class="wt-tab" data-tab="console">Console <span class="wt-tab-badge" id="wt-console-count">0</span></button>
-    <button class="wt-tab" data-tab="elements">Elements</button>
-    <button class="wt-tab" data-tab="source">Source</button>
-    <button class="wt-tab" data-tab="storage">Storage</button>
-    <button class="wt-tab" data-tab="resources">Resources</button>
+  <div id="wt-search-wrap">
+    <span id="wt-search-ico">${ic(ICONS.search,15)}</span>
+    <input id="wt-search" placeholder="Search tools...">
   </div>
 
-  <div id="wt-toolbar"></div>
-  <div id="wt-view"></div>
-
+  <div id="wt-tools"></div>
 </div>
 `;
 
+document.body.appendChild(root);
+
 const panel=root.querySelector('#wt-panel');
-const view=root.querySelector('#wt-view');
-const toolbar=root.querySelector('#wt-toolbar');
+const tools=root.querySelector('#wt-tools');
 const search=root.querySelector('#wt-search');
 
-let currentTab='overview';
+const modal=(title,html)=>{
+  const old=document.getElementById('wt-modal');
+  if(old)old.remove();
 
-const formatBytes=n=>{
-  if(!Number.isFinite(n)||n<0)return '—';
-  if(n<1024)return `${n} B`;
-  if(n<1024*1024)return `${(n/1024).toFixed(1)} KB`;
-  return `${(n/1024/1024).toFixed(2)} MB`;
+  const m=document.createElement('div');
+  m.id='wt-modal';
+
+  m.innerHTML=`
+    <div id="wt-box">
+      <div id="wt-box-grip"></div>
+      <div id="wt-box-head">
+        <div id="wt-box-title">${esc(title)}</div>
+        <button id="wt-box-close">Close</button>
+      </div>
+      <div id="wt-content">${html}</div>
+    </div>
+  `;
+
+  document.body.appendChild(m);
+
+  m.querySelector('#wt-box-close').onclick=()=>m.remove();
+
+  m.addEventListener('click',e=>{
+    if(e.target===m)m.remove();
+  });
+
+  return m;
 };
 
-const formatMs=n=>{
-  return Number.isFinite(n)?`${n.toFixed(1)} ms`:'—';
+const setModalStatus=(m,status,progress)=>{
+  if(!m)return;
+
+  const statusEl=m.querySelector('[data-wt-status]');
+  const bar=m.querySelector('[data-wt-progress]');
+
+  if(statusEl)statusEl.textContent=status;
+  if(bar&&typeof progress==='number'){
+    bar.style.width=Math.max(0,Math.min(100,progress))+'%';
+  }
 };
 
 const copy=async text=>{
   try{
-    await navigator.clipboard.writeText(String(text));
+    await navigator.clipboard.writeText(text);
     return true;
   }catch{
     try{
       const ta=document.createElement('textarea');
-      ta.value=String(text);
+      ta.value=text;
       ta.style.position='fixed';
       ta.style.opacity='0';
       document.body.appendChild(ta);
@@ -676,1398 +615,1299 @@ const copy=async text=>{
   }
 };
 
-const htmlHighlight=html=>{
-  const tagRe=/<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*>/g;
+const urlHTML=url=>{
+  const safe=esc(url);
+  return `<a class="wt-url" href="${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+};
+
+const addTool=(iconKey,title,description,fn)=>{
+  const b=document.createElement('button');
+  b.className='wt-tool';
+  b.dataset.search=(title+' '+description).toLowerCase();
+  b.innerHTML=`
+    <div class="wt-tool-ico">${ic(ICONS[iconKey],17)}</div>
+    <div class="wt-tool-body">
+      <div class="wt-tool-title">${esc(title)}</div>
+      <div class="wt-tool-desc">${esc(description)}</div>
+    </div>
+  `;
+  b.onclick=fn;
+  tools.appendChild(b);
+};
+
+const card=(label,value,copyValue)=>{
+  return `
+    <div class="wt-card">
+      <div class="wt-label">${esc(label)}</div>
+      <div class="wt-value">
+        ${copyValue!==undefined
+          ? `<button class="wt-copy" data-copy="${esc(copyValue)}">Copy</button>`
+          : ''}
+        ${value}
+      </div>
+    </div>
+  `;
+};
+
+const empty=text=>`<div class="wt-empty">${esc(text)}</div>`;
+
+const bindCopies=()=>{
+  document.querySelectorAll('#wt-content .wt-copy').forEach(b=>{
+    b.onclick=async()=>{
+      const ok=await copy(b.dataset.copy);
+      b.textContent=ok?'Copied':'Failed';
+      setTimeout(()=>b.textContent=b.dataset.copy&&b.closest('.wt-code-toolbar')?'Copy HTML':'Copy',1200);
+    };
+  });
+};
+
+/* =========================================================
+   LIGHTWEIGHT HTML SYNTAX HIGHLIGHTER
+   (regex-based tokenizer, no external library, output is
+   fully escaped before being wrapped in color spans)
+   ========================================================= */
+
+const highlightAttrs=attrsPart=>{
+  let out='';
+  let last=0;
+  const attrRe=/([a-zA-Z_:][-a-zA-Z0-9_:.]*)(\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?/g;
+  let am;
+
+  while((am=attrRe.exec(attrsPart))){
+    out+=esc(attrsPart.slice(last,am.index));
+    out+=`<span class="wt-c-attr">${esc(am[1])}</span>`;
+
+    if(am[3]!==undefined){
+      out+=`<span class="wt-c-punct">=</span><span class="wt-c-string">${esc(am[3])}</span>`;
+    }
+
+    last=attrRe.lastIndex;
+  }
+
+  out+=esc(attrsPart.slice(last));
+  return out;
+};
+
+const highlightTag=tag=>{
+  const isClose=tag.startsWith('</');
+  const open=isClose?'</':'<';
+  const selfClose=tag.endsWith('/>');
+  const closer=selfClose?'/>':'>';
+  const inner=tag.slice(open.length,tag.length-closer.length);
+  const nameMatch=inner.match(/^[a-zA-Z][a-zA-Z0-9:-]*/);
+  const name=nameMatch?nameMatch[0]:'';
+  const attrsPart=inner.slice(name.length);
+
+  return `<span class="wt-c-punct">${esc(open)}</span>`+
+    `<span class="wt-c-tag">${esc(name)}</span>`+
+    highlightAttrs(attrsPart)+
+    `<span class="wt-c-punct">${esc(closer)}</span>`;
+};
+
+const highlightHTML=html=>{
+  const re=/<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*>/g;
   let out='';
   let last=0;
   let m;
 
-  const attrs=s=>{
-    let result='';
-    let pos=0;
-
-    const re=/([a-zA-Z_:][-a-zA-Z0-9_:.]*)(\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?/g;
-    let a;
-
-    while((a=re.exec(s))){
-      result+=esc(s.slice(pos,a.index));
-      result+=`<span class="wt-attr">${esc(a[1])}</span>`;
-
-      if(a[3]!==undefined){
-        result+=`<span class="wt-punct">=</span><span class="wt-string">${esc(a[3])}</span>`;
-      }
-
-      pos=re.lastIndex;
-    }
-
-    result+=esc(s.slice(pos));
-    return result;
-  };
-
-  while((m=tagRe.exec(html))){
+  while((m=re.exec(html))){
     out+=esc(html.slice(last,m.index));
+    const tok=m[0];
 
-    const token=m[0];
+    out+=tok.startsWith('<!--')
+      ?`<span class="wt-c-comment">${esc(tok)}</span>`
+      :highlightTag(tok);
 
-    if(token.startsWith('<!--')){
-      out+=`<span class="wt-comment">${esc(token)}</span>`;
-    }else{
-      const close=token.startsWith('</');
-      const open=close?'</':'<';
-      const ending=token.endsWith('/>')?'/': '';
-      const inner=token.slice(open.length,token.length-(ending?2:1));
-      const nm=inner.match(/^[a-zA-Z][a-zA-Z0-9:-]*/);
-      const name=nm?nm[0]:'';
-      const ap=inner.slice(name.length);
-
-      out+=`<span class="wt-punct">${esc(open)}</span>`;
-      out+=`<span class="wt-tag">${esc(name)}</span>`;
-      out+=attrs(ap);
-      out+=`<span class="wt-punct">${ending?'/':''}&gt;</span>`;
-    }
-
-    last=tagRe.lastIndex;
+    last=re.lastIndex;
   }
 
   out+=esc(html.slice(last));
   return out;
 };
 
-/* ============================================================
-   NETWORK CAPTURE
-   ============================================================ */
+/* =========================================================
+   PAGE OVERVIEW
+   ========================================================= */
 
-const pushNetwork=item=>{
-  if(state.destroyed)return;
+addTool(
+  'overview','Page Overview',
+  'Title, URL, domain and document statistics',
+  ()=>{
+    const rows=[
+      ['Title',esc(document.title)],
+      ['URL',urlHTML(location.href)],
+      ['Domain',esc(location.hostname)],
+      ['Protocol',esc(location.protocol)],
+      ['Path',esc(location.pathname)],
+      ['Referrer',esc(document.referrer||'(none)')]
+    ];
 
-  item.id=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;
+    modal(
+      'Page Overview',
+      `<div class="wt-stat-grid">
+        <div class="wt-stat"><div class="wt-stat-num">${document.links.length}</div><div class="wt-stat-label">Links</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${document.images.length}</div><div class="wt-stat-label">Images</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${document.forms.length}</div><div class="wt-stat-label">Forms</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${document.scripts.length}</div><div class="wt-stat-label">Scripts</div></div>
+      </div>
+      <br>
+      ${rows.map(x=>card(x[0],x[1],x[1])).join('')}`
+    );
 
-  state.network.unshift(item);
-
-  if(state.network.length>1000){
-    state.network.length=1000;
+    bindCopies();
   }
+);
 
-  updateBadges();
+/* =========================================================
+   FRONTEND ZIP EXPORT
+   ========================================================= */
 
-  if(currentTab==='network'){
-    renderNetwork();
-  }
-};
+const loadScriptOnce=(src)=>{
+  return new Promise((resolve,reject)=>{
+    const existing=[...document.scripts].find(s=>s.src===src);
 
-const normalizeHeaders=headers=>{
-  const out={};
-
-  try{
-    if(headers instanceof Headers){
-      headers.forEach((v,k)=>out[k]=v);
-    }else if(Array.isArray(headers)){
-      headers.forEach(pair=>{
-        if(pair&&pair.length>=2)out[pair[0]]=pair[1];
-      });
-    }else if(headers&&typeof headers==='object'){
-      Object.keys(headers).forEach(k=>out[k]=headers[k]);
-    }
-  }catch{}
-
-  return out;
-};
-
-/* FETCH */
-
-window.fetch=async function(input,init){
-  const started=performance.now();
-
-  let url='';
-  let method='GET';
-
-  try{
-    if(input instanceof Request){
-      url=input.url;
-      method=input.method||'GET';
-    }else{
-      url=new URL(String(input),location.href).href;
-      method=(init&&init.method)||'GET';
-    }
-  }catch{
-    url=String(input);
-  }
-
-  const request={
-    kind:'fetch',
-    url,
-    method:String(method).toUpperCase(),
-    start:Date.now(),
-    duration:0,
-    status:null,
-    statusText:'',
-    type:'fetch',
-    size:0,
-    error:null,
-    requestHeaders:normalizeHeaders(init?.headers),
-    responseHeaders:{}
-  };
-
-  try{
-    const response=await state.original.fetch.apply(this,arguments);
-
-    request.status=response.status;
-    request.statusText=response.statusText;
-    request.duration=performance.now()-started;
-
-    response.headers.forEach((v,k)=>{
-      request.responseHeaders[k]=v;
-    });
-
-    const len=response.headers.get('content-length');
-    if(len)request.size=Number(len)||0;
-
-    pushNetwork(request);
-
-    return response;
-  }catch(error){
-    request.error=error?.message||String(error);
-    request.duration=performance.now()-started;
-
-    pushNetwork(request);
-
-    throw error;
-  }
-};
-
-/* XHR */
-
-const xhrMeta=new WeakMap();
-
-XMLHttpRequest.prototype.open=function(method,url){
-  const meta={
-    method:String(method||'GET').toUpperCase(),
-    url:'',
-    start:0,
-    requestHeaders:{}
-  };
-
-  try{
-    meta.url=new URL(String(url),location.href).href;
-  }catch{
-    meta.url=String(url);
-  }
-
-  xhrMeta.set(this,meta);
-
-  return state.original.XHR.open.apply(this,arguments);
-};
-
-XMLHttpRequest.prototype.setRequestHeader=function(name,value){
-  const meta=xhrMeta.get(this);
-
-  if(meta){
-    meta.requestHeaders[name]=value;
-  }
-
-  return state.original.XHR.setRequestHeader.apply(this,arguments);
-};
-
-XMLHttpRequest.prototype.send=function(body){
-  const xhr=this;
-  const meta=xhrMeta.get(xhr);
-
-  if(meta){
-    meta.start=performance.now();
-
-    const finish=()=>{
-      if(meta.__done)return;
-      meta.__done=true;
-
-      const item={
-        kind:'xhr',
-        url:meta.url,
-        method:meta.method,
-        start:Date.now(),
-        duration:performance.now()-meta.start,
-        status:xhr.status||0,
-        statusText:xhr.statusText||'',
-        type:'xhr',
-        size:0,
-        error:null,
-        requestHeaders:meta.requestHeaders,
-        responseHeaders:{}
-      };
-
-      try{
-        const headers=xhr.getAllResponseHeaders()||'';
-
-        headers.trim().split(/[\r\n]+/).forEach(line=>{
-          const i=line.indexOf(':');
-
-          if(i>0){
-            const key=line.slice(0,i).trim().toLowerCase();
-            const value=line.slice(i+1).trim();
-            item.responseHeaders[key]=value;
-          }
-        });
-      }catch{}
-
-      try{
-        const text=xhr.responseText;
-        if(typeof text==='string')item.size=new Blob([text]).size;
-      }catch{}
-
-      pushNetwork(item);
-    };
-
-    xhr.addEventListener('loadend',finish,{once:true});
-    xhr.addEventListener('error',finish,{once:true});
-    xhr.addEventListener('abort',finish,{once:true});
-  }
-
-  return state.original.XHR.send.apply(this,arguments);
-};
-
-/* PERFORMANCE RESOURCES */
-
-const collectPerformanceNetwork=()=>{
-  try{
-    performance.getEntriesByType('resource').forEach(e=>{
-      const url=e.name;
-
-      if(state.network.some(x=>x.performanceName===url)){
+    if(existing){
+      if(window.JSZip){
+        resolve(window.JSZip);
         return;
       }
 
-      state.network.push({
-        id:`perf-${Math.random()}`,
-        kind:'resource',
-        performanceName:url,
-        url,
-        method:'—',
-        start:Date.now(),
-        duration:e.duration||0,
-        status:null,
-        statusText:'',
-        type:e.initiatorType||'resource',
-        size:e.transferSize||e.encodedBodySize||0,
-        error:null,
-        requestHeaders:{},
-        responseHeaders:{},
-        fromPerformance:true
-      });
-    });
-
-    state.network=state.network.slice(0,1000);
-  }catch{}
-};
-
-collectPerformanceNetwork();
-
-const networkObserver=window.PerformanceObserver
-?new PerformanceObserver(list=>{
-    list.getEntries().forEach(e=>{
-      if(!state.network.some(x=>x.performanceName===e.name)){
-        state.network.unshift({
-          id:`perf-${Math.random()}`,
-          performanceName:e.name,
-          kind:'resource',
-          url:e.name,
-          method:'—',
-          start:Date.now(),
-          duration:e.duration||0,
-          status:null,
-          statusText:'',
-          type:e.initiatorType||'resource',
-          size:e.transferSize||e.encodedBodySize||0,
-          error:null,
-          requestHeaders:{},
-          responseHeaders:{},
-          fromPerformance:true
-        });
-
-        state.network=state.network.slice(0,1000);
-      }
-    });
-
-    updateBadges();
-
-    if(currentTab==='network')renderNetwork();
-  })
-:null;
-
-try{
-  networkObserver?.observe({entryTypes:['resource']});
-}catch{}
-
-/* ============================================================
-   CONSOLE CAPTURE
-   ============================================================ */
-
-const serialize=v=>{
-  try{
-    if(typeof v==='string')return v;
-
-    if(v instanceof Error){
-      return `${v.name}: ${v.message}`;
+      existing.addEventListener('load',()=>resolve(window.JSZip),{once:true});
+      existing.addEventListener('error',()=>reject(new Error('ZIP library could not be loaded.')),{once:true});
+      return;
     }
 
-    if(typeof v==='object'){
-      return JSON.stringify(v,null,2);
-    }
-
-    return String(v);
-  }catch{
-    return '[Unserializable value]';
-  }
-};
-
-const pushConsole=(level,args)=>{
-  state.console.push({
-    id:`c-${Date.now()}-${Math.random()}`,
-    level,
-    time:new Date(),
-    text:args.map(serialize).join(' ')
-  });
-
-  if(state.console.length>1000){
-    state.console.shift();
-  }
-
-  updateBadges();
-
-  if(currentTab==='console'){
-    renderConsole();
-  }
-};
-
-['log','info','warn','error','debug'].forEach(level=>{
-  console[level]=function(...args){
-    pushConsole(level,args);
-
-    try{
-      return state.original.console[level].apply(console,args);
-    }catch{}
-  };
-});
-
-/* ============================================================
-   BADGES
-   ============================================================ */
-
-const updateBadges=()=>{
-  const n=root.querySelector('#wt-network-count');
-  const c=root.querySelector('#wt-console-count');
-
-  if(n)n.textContent=state.network.length;
-  if(c)c.textContent=state.console.length;
-};
-
-/* ============================================================
-   TAB SYSTEM
-   ============================================================ */
-
-const tabs=[...root.querySelectorAll('.wt-tab')];
-
-tabs.forEach(tab=>{
-  tab.onclick=()=>{
-    currentTab=tab.dataset.tab;
-
-    tabs.forEach(t=>t.classList.toggle('active',t===tab));
-
-    renderCurrent();
-  };
-});
-
-root.querySelector('#wt-refresh').onclick=()=>{
-  renderCurrent();
-};
-
-root.querySelector('#wt-close').onclick=()=>{
-  panel.classList.remove('open');
-};
-
-root.querySelector('#wt-launch').onclick=()=>{
-  panel.classList.toggle('open');
-  if(panel.classList.contains('open')){
-    renderCurrent();
-  }
-};
-
-const setToolbar=html=>{
-  toolbar.innerHTML=html;
-};
-
-const renderCurrent=()=>{
-  switch(currentTab){
-    case 'overview':renderOverview();break;
-    case 'network':renderNetwork();break;
-    case 'console':renderConsole();break;
-    case 'elements':renderElements();break;
-    case 'source':renderSource();break;
-    case 'storage':renderStorage();break;
-    case 'resources':renderResources();break;
-  }
-};
-
-/* ============================================================
-   OVERVIEW
-   ============================================================ */
-
-const renderOverview=()=>{
-  setToolbar(`
-    <button class="wt-small-btn" id="wt-overview-copy">Copy URL</button>
-  `);
-
-  view.innerHTML=`
-    <div class="wt-grid">
-      <div class="wt-stat">
-        <div class="wt-num">${document.links.length}</div>
-        <div class="wt-stat-label">Links</div>
-      </div>
-
-      <div class="wt-stat">
-        <div class="wt-num">${document.images.length}</div>
-        <div class="wt-stat-label">Images</div>
-      </div>
-
-      <div class="wt-stat">
-        <div class="wt-num">${document.forms.length}</div>
-        <div class="wt-stat-label">Forms</div>
-      </div>
-
-      <div class="wt-stat">
-        <div class="wt-num">${document.scripts.length}</div>
-        <div class="wt-stat-label">Scripts</div>
-      </div>
-    </div>
-
-    ${[
-      ['Title',document.title],
-      ['URL',location.href],
-      ['Origin',location.origin],
-      ['Protocol',location.protocol],
-      ['Host',location.host],
-      ['Path',location.pathname],
-      ['Referrer',document.referrer||'(none)'],
-      ['Ready State',document.readyState],
-      ['Viewport',`${innerWidth} × ${innerHeight}`],
-      ['User Agent',navigator.userAgent]
-    ].map(x=>`
-      <div class="wt-card">
-        <div class="wt-card-title">${esc(x[0])}</div>
-        <div class="wt-value">${esc(x[1])}</div>
-      </div>
-    `).join('')}
-  `;
-
-  root.querySelector('#wt-overview-copy').onclick=async e=>{
-    const ok=await copy(location.href);
-    e.currentTarget.textContent=ok?'Copied':'Failed';
-    setTimeout(()=>e.currentTarget.textContent='Copy URL',1000);
-  };
-};
-
-/* ============================================================
-   NETWORK
-   ============================================================ */
-
-let networkFilter='all';
-
-const renderNetwork=()=>{
-  setToolbar(`
-    <select class="wt-select" id="wt-net-type">
-      <option value="all">All</option>
-      <option value="fetch">Fetch</option>
-      <option value="xhr">XHR</option>
-      <option value="script">Script</option>
-      <option value="link">CSS</option>
-      <option value="img">Images</option>
-      <option value="resource">Resources</option>
-    </select>
-
-    <button class="wt-small-btn" id="wt-net-refresh">Refresh</button>
-    <button class="wt-small-btn danger" id="wt-net-clear">Clear</button>
-  `);
-
-  const typeSelect=root.querySelector('#wt-net-type');
-  typeSelect.value=networkFilter;
-
-  typeSelect.onchange=()=>{
-    networkFilter=typeSelect.value;
-    renderNetwork();
-  };
-
-  root.querySelector('#wt-net-refresh').onclick=()=>{
-    collectPerformanceNetwork();
-    renderNetwork();
-  };
-
-  root.querySelector('#wt-net-clear').onclick=()=>{
-    state.network=[];
-    renderNetwork();
-    updateBadges();
-  };
-
-  const filtered=state.network.filter(x=>{
-    if(networkFilter==='all')return true;
-
-    return x.type===networkFilter||
-      x.kind===networkFilter||
-      (networkFilter==='resource'&&x.kind==='resource');
-  });
-
-  if(!filtered.length){
-    view.innerHTML=`<div class="wt-empty">
-      No network entries captured yet.<br><br>
-      Fetch/XHR requests made after this tool was installed are captured automatically.
-    </div>`;
-    return;
-  }
-
-  view.innerHTML=`
-    <table class="wt-table">
-      <thead>
-        <tr>
-          <th style="width:52px">Type</th>
-          <th>Request</th>
-          <th style="width:55px">Status</th>
-          <th style="width:65px">Time</th>
-          <th style="width:60px">Size</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${filtered.map((x,i)=>`
-          <tr class="wt-row" data-network-index="${i}">
-            <td>${esc(x.type||x.kind||'—')}</td>
-            <td>
-              <span class="wt-method">${esc(x.method||'—')}</span>
-              <span class="wt-url">${esc(x.url)}</span>
-            </td>
-            <td class="${
-              x.status>=200&&x.status<400
-              ?'wt-status-ok'
-              :x.status>=400
-                ?'wt-status-bad'
-                :'wt-status-neutral'
-            }">${x.status??'—'}</td>
-            <td>${formatMs(x.duration)}</td>
-            <td>${formatBytes(x.size)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-
-  [...view.querySelectorAll('[data-network-index]')].forEach((row,i)=>{
-    row.onclick=()=>{
-      const item=filtered[i];
-      showNetworkDetail(item);
+    const s=document.createElement('script');
+    s.src=src;
+    s.async=true;
+    s.onload=()=>{
+      if(window.JSZip)resolve(window.JSZip);
+      else reject(new Error('ZIP library loaded but was unavailable.'));
     };
+    s.onerror=()=>reject(new Error('ZIP library could not be loaded.'));
+    document.head.appendChild(s);
   });
 };
 
-const showNetworkDetail=item=>{
-  const headers=(obj,title)=>`
-    <div class="wt-card">
-      <div class="wt-card-title">${title}</div>
-      ${
-        Object.keys(obj||{}).length
-        ?Object.entries(obj).map(([k,v])=>`
-          <div class="wt-property">
-            <div class="wt-property-key">${esc(k)}</div>
-            <div class="wt-property-value">${esc(v)}</div>
-          </div>
-        `).join('')
-        :'<div class="wt-muted">Not exposed by the browser.</div>'
-      }
-    </div>
-  `;
+/*
+ * Native ZIP fallback.
+ *
+ * This writes a valid ZIP using stored (uncompressed) entries.
+ * That keeps the exporter independent from third-party libraries if
+ * a site blocks dynamic script loading through CSP.
+ */
+const crcTable=(()=>{
+  const table=new Uint32Array(256);
 
-  view.innerHTML=`
-    <div class="wt-card">
-      <button class="wt-small-btn" id="wt-net-back">
-        ${ic(ICONS.back,12)} Back
-      </button>
-      <button class="wt-small-btn" id="wt-net-copy">Copy URL</button>
-    </div>
+  for(let n=0;n<256;n++){
+    let c=n;
 
-    ${[
-      ['Type',item.type||item.kind],
-      ['Method',item.method],
-      ['URL',item.url],
-      ['Status',item.status??'Not available'],
-      ['Status Text',item.statusText||'—'],
-      ['Duration',formatMs(item.duration)],
-      ['Transfer Size',formatBytes(item.size)],
-      ['Captured',new Date(item.start).toLocaleTimeString()],
-      ['Source',item.fromPerformance?'Performance API':'Fetch/XHR interception']
-    ].map(x=>`
-      <div class="wt-card">
-        <div class="wt-card-title">${esc(x[0])}</div>
-        <div class="wt-value">${esc(x[1])}</div>
-      </div>
-    `).join('')}
-
-    ${headers(item.requestHeaders,'Request Headers')}
-    ${headers(item.responseHeaders,'Response Headers')}
-
-    ${item.error?`
-      <div class="wt-card">
-        <div class="wt-card-title">Error</div>
-        <div class="wt-value" style="color:var(--red)">${esc(item.error)}</div>
-      </div>
-    `:''}
-
-    <div class="wt-card">
-      <div class="wt-card-title">Browser limitation</div>
-      <div class="wt-value wt-muted">
-        This is page-level network inspection. It is not equivalent to the
-        privileged Network panel in browser DevTools. Requests made by the
-        browser outside APIs observable to page JavaScript may not expose
-        request/response headers or bodies.
-      </div>
-    </div>
-  `;
-
-  root.querySelector('#wt-net-back').onclick=renderNetwork;
-
-  root.querySelector('#wt-net-copy').onclick=async e=>{
-    const ok=await copy(item.url);
-    e.currentTarget.textContent=ok?'Copied':'Failed';
-    setTimeout(()=>e.currentTarget.textContent='Copy URL',1000);
-  };
-};
-
-/* ============================================================
-   CONSOLE
-   ============================================================ */
-
-const renderConsole=()=>{
-  setToolbar(`
-    <button class="wt-small-btn" id="wt-console-clear">Clear</button>
-    <button class="wt-small-btn" id="wt-console-info">Info</button>
-  `);
-
-  const lines=state.console;
-
-  view.innerHTML=`
-    <div class="wt-console">
-      ${
-        lines.length
-        ?lines.map(x=>`
-          <div class="wt-console-line ${esc(x.level)}">
-            <span class="wt-console-time">${x.time.toLocaleTimeString()}</span>
-            ${esc(x.text)}
-          </div>
-        `).join('')
-        :`<div class="wt-empty">Console is empty.</div>`
-      }
-    </div>
-
-    <input id="wt-console-input"
-      autocomplete="off"
-      spellcheck="false"
-      placeholder="JavaScript expression — press Enter">
-  `;
-
-  root.querySelector('#wt-console-clear').onclick=()=>{
-    state.console=[];
-    renderConsole();
-    updateBadges();
-  };
-
-  root.querySelector('#wt-console-info').onclick=()=>{
-    pushConsole('info',[
-      'Page-level console. JavaScript entered here executes in the page context.'
-    ]);
-  };
-
-  const input=root.querySelector('#wt-console-input');
-
-  input.onkeydown=e=>{
-    if(e.key!=='Enter')return;
-
-    const code=input.value.trim();
-
-    if(!code)return;
-
-    pushConsole('command',[`> ${code}`]);
-
-    try{
-      const result=(0,eval)(code);
-      pushConsole('log',[result]);
-    }catch(error){
-      pushConsole('error',[error]);
+    for(let k=0;k<8;k++){
+      c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);
     }
 
-    input.value='';
-  };
-
-  view.scrollTop=view.scrollHeight;
-};
-
-/* ============================================================
-   ELEMENTS / DOM INSPECTOR
-   ============================================================ */
-
-const nodeLabel=el=>{
-  if(el.nodeType===3){
-    const text=el.textContent.trim().replace(/\s+/g,' ');
-    return text?`"${text.slice(0,100)}"`:'text';
+    table[n]=c>>>0;
   }
 
-  if(el.nodeType!==1)return el.nodeName;
+  return table;
+})();
 
-  let out=el.tagName.toLowerCase();
+const crc32=data=>{
+  let c=0xffffffff;
 
-  if(el.id)out+=`#${el.id}`;
+  for(let i=0;i<data.length;i++){
+    c=crcTable[(c^data[i])&0xff]^(c>>>8);
+  }
 
-  if(typeof el.className==='string'&&el.className.trim()){
-    out+=el.className.trim()
-      .split(/\s+/)
-      .slice(0,3)
-      .map(x=>`.${x}`)
-      .join('');
+  return (c^0xffffffff)>>>0;
+};
+
+const u16=(n)=>{
+  const a=new Uint8Array(2);
+  const v=new DataView(a.buffer);
+  v.setUint16(0,n,true);
+  return a;
+};
+
+const u32=(n)=>{
+  const a=new Uint8Array(4);
+  const v=new DataView(a.buffer);
+  v.setUint32(0,n>>>0,true);
+  return a;
+};
+
+const concatBytes=parts=>{
+  let total=0;
+
+  for(const p of parts)total+=p.length;
+
+  const out=new Uint8Array(total);
+  let offset=0;
+
+  for(const p of parts){
+    out.set(p,offset);
+    offset+=p.length;
   }
 
   return out;
 };
 
-const renderTreeNode=(node,depth=0)=>{
-  if(!node)return '';
+const makeStoredZip=entries=>{
+  const enc=new TextEncoder();
+  const local=[];
+  const central=[];
+  let offset=0;
 
-  if(node.nodeType===3){
-    const txt=node.textContent.trim();
+  for(const entry of entries){
+    const nameBytes=enc.encode(entry.name);
+    const data=entry.data instanceof Uint8Array
+      ?entry.data
+      :new Uint8Array(entry.data);
 
-    if(!txt)return '';
+    const crc=crc32(data);
 
-    return `
-      <div class="wt-node" style="margin-left:${depth*14}px">
-        <div class="wt-node-line wt-node-text">
-          ${esc(txt.slice(0,150))}
-        </div>
-      </div>
-    `;
+    const localHeader=concatBytes([
+      u32(0x04034b50),
+      u16(20),
+      u16(0x0800),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(crc),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      nameBytes
+    ]);
+
+    local.push(localHeader,data);
+
+    const centralHeader=concatBytes([
+      u32(0x02014b50),
+      u16(20),
+      u16(20),
+      u16(0x0800),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(crc),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(0),
+      u32(offset),
+      nameBytes
+    ]);
+
+    central.push(centralHeader);
+
+    offset+=localHeader.length+data.length;
   }
 
-  if(node.nodeType!==1)return '';
+  const centralBytes=concatBytes(central);
+  const localBytes=concatBytes(local);
 
-  const children=[...node.childNodes]
-    .slice(0,100)
-    .map(n=>renderTreeNode(n,depth+1))
-    .join('');
+  const end=concatBytes([
+    u32(0x06054b50),
+    u16(0),
+    u16(0),
+    u16(entries.length),
+    u16(entries.length),
+    u32(centralBytes.length),
+    u32(localBytes.length),
+    u16(0)
+  ]);
 
-  return `
-    <div class="wt-node" style="margin-left:${depth*14}px">
-      <div class="wt-node-line" data-inspect-node>
-        <span class="wt-node-name">${esc(node.tagName.toLowerCase())}</span>
-        ${
-          node.id
-          ?` <span class="wt-node-attr">#${esc(node.id)}</span>`
-          :''
-        }
-      </div>
-      ${children}
-    </div>
-  `;
+  return new Blob([localBytes,centralBytes,end],{type:'application/zip'});
 };
 
-const renderElements=()=>{
-  setToolbar(`
-    <button class="wt-small-btn" id="wt-dom-picker">Pick Element</button>
-    <button class="wt-small-btn" id="wt-dom-body">Body</button>
-  `);
-
-  view.innerHTML=`
-    <div class="wt-card">
-      <div class="wt-card-title">DOM</div>
-      <div class="wt-value wt-muted">
-        Select an element from the tree or use Pick Element.
-      </div>
-    </div>
-
-    <div class="wt-tree">
-      ${renderTreeNode(document.documentElement)}
-    </div>
-  `;
-
-  root.querySelector('#wt-dom-body').onclick=()=>{
-    showElementDetails(document.body);
-  };
-
-  root.querySelector('#wt-dom-picker').onclick=()=>{
-    enablePicker();
-  };
-
-  [...view.querySelectorAll('[data-inspect-node]')].forEach((line)=>{
-    line.onclick=e=>{
-      e.stopPropagation();
-
-      const label=line.querySelector('.wt-node-name')?.textContent;
-
-      const candidates=[...document.querySelectorAll(label||'*')];
-
-      if(candidates[0])showElementDetails(candidates[0]);
-    };
-  });
+const safeFileName=name=>{
+  return String(name||'file')
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g,'-')
+    .replace(/\s+/g,' ')
+    .trim()
+    .slice(0,180)||'file';
 };
 
-let pickerActive=false;
+const resourceName=(url,fallback='resource')=>{
+  try{
+    const u=new URL(url,location.href);
+    let name=decodeURIComponent(u.pathname.split('/').pop()||fallback);
+    name=name.replace(/[?#].*$/,'');
 
-const enablePicker=()=>{
-  if(pickerActive)return;
+    if(!name||name==='.'||name==='..')name=fallback;
 
-  pickerActive=true;
+    return safeFileName(name);
+  }catch{
+    return safeFileName(fallback);
+  }
+};
 
-  const highlight=document.createElement('style');
+const uniquePath=(path,used)=>{
+  if(!used.has(path)){
+    used.add(path);
+    return path;
+  }
 
-  highlight.id='wt-picker-style';
+  const dot=path.lastIndexOf('.');
+  const base=dot>0?path.slice(0,dot):path;
+  const ext=dot>0?path.slice(dot):'';
 
-  highlight.textContent=`
-    [data-wt-picker-highlight]{
-      outline:2px solid #78a2ff!important;
-      outline-offset:2px!important;
-      cursor:crosshair!important;
+  let i=2;
+
+  while(used.has(`${base}-${i}${ext}`))i++;
+
+  path=`${base}-${i}${ext}`;
+  used.add(path);
+
+  return path;
+};
+
+const isFetchableURL=url=>{
+  try{
+    const u=new URL(url,location.href);
+
+    if(!/^https?:$/i.test(u.protocol)){
+      return false;
     }
-  `;
 
-  document.head.appendChild(highlight);
+    return true;
+  }catch{
+    return false;
+  }
+};
 
-  const over=e=>{
-    if(root.contains(e.target))return;
+const fetchResource=async(url,timeout=12000)=>{
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeout);
 
-    e.target.setAttribute('data-wt-picker-highlight','');
-  };
+  try{
+    const response=await fetch(url,{
+      method:'GET',
+      credentials:'same-origin',
+      cache:'default',
+      signal:controller.signal
+    });
 
-  const out=e=>{
+    if(!response.ok){
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    if(response.type==='opaque'){
+      throw new Error('Opaque response');
+    }
+
+    return {
+      url:response.url||url,
+      contentType:response.headers.get('content-type')||'',
+      buffer:await response.arrayBuffer()
+    };
+  }finally{
+    clearTimeout(timer);
+  }
+};
+
+const collectFrontendResources=()=>{
+  const list=[];
+  const seen=new Set();
+
+  const add=(url,type,element)=>{
+    if(!url)return;
+
     try{
-      e.target.removeAttribute('data-wt-picker-highlight');
+      const u=new URL(url,location.href);
+
+      if(!/^https?:$/i.test(u.protocol))return;
+
+      const key=u.href;
+
+      if(seen.has(key))return;
+
+      seen.add(key);
+
+      list.push({url:key,type,element});
     }catch{}
   };
 
-  const click=e=>{
-    if(root.contains(e.target))return;
+  document.querySelectorAll('link[href]').forEach(el=>{
+    const rel=(el.getAttribute('rel')||'').toLowerCase();
 
-    e.preventDefault();
-    e.stopPropagation();
+    if(
+      rel.includes('stylesheet')||
+      rel.includes('icon')||
+      rel.includes('manifest')||
+      rel.includes('preload')||
+      rel.includes('modulepreload')
+    ){
+      add(el.href,rel.includes('stylesheet')?'css':'asset',el);
+    }
+  });
 
-    cleanup();
+  document.querySelectorAll('script[src]').forEach(el=>{
+    add(el.src,'js',el);
+  });
 
-    showElementDetails(e.target);
-  };
+  document.querySelectorAll('img[src],source[src],video[src],audio[src],iframe[src]').forEach(el=>{
+    add(el.src,'asset',el);
+  });
 
-  const cleanup=()=>{
-    pickerActive=false;
+  document.querySelectorAll('[srcset]').forEach(el=>{
+    const value=el.getAttribute('srcset')||'';
 
-    document.removeEventListener('mouseover',over,true);
-    document.removeEventListener('mouseout',out,true);
-    document.removeEventListener('click',click,true);
+    value.split(',').forEach(part=>{
+      const candidate=part.trim().split(/\s+/)[0];
+      if(candidate)add(candidate,'asset',el);
+    });
+  });
 
-    document.querySelectorAll('[data-wt-picker-highlight]')
-      .forEach(x=>x.removeAttribute('data-wt-picker-highlight'));
+  document.querySelectorAll('[poster]').forEach(el=>{
+    add(el.getAttribute('poster'),'asset',el);
+  });
 
-    highlight.remove();
-  };
+  document.querySelectorAll('link[href]').forEach(el=>{
+    const href=el.href;
 
-  document.addEventListener('mouseover',over,true);
-  document.addEventListener('mouseout',out,true);
-  document.addEventListener('click',click,true);
-};
+    if(href){
+      const lower=href.toLowerCase();
 
-const showElementDetails=el=>{
-  state.selectedElement=el;
-
-  if(!el)return;
-
-  const attrs=el.attributes
-    ?[...el.attributes]
-    :[];
-
-  const rect=el.getBoundingClientRect();
-
-  view.innerHTML=`
-    <div class="wt-card">
-      <button class="wt-small-btn" id="wt-elements-back">Back</button>
-    </div>
-
-    <div class="wt-card">
-      <div class="wt-card-title">Element</div>
-      <div class="wt-value">
-        ${esc(nodeLabel(el))}
-      </div>
-    </div>
-
-    <div class="wt-card">
-      <div class="wt-card-title">Geometry</div>
-      ${[
-        ['X',rect.x],
-        ['Y',rect.y],
-        ['Width',rect.width],
-        ['Height',rect.height]
-      ].map(x=>`
-        <div class="wt-property">
-          <div class="wt-property-key">${x[0]}</div>
-          <div class="wt-property-value">${Number(x[1]).toFixed(1)} px</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="wt-card">
-      <div class="wt-card-title">Attributes</div>
-      ${
-        attrs.length
-        ?attrs.map(a=>`
-          <div class="wt-property">
-            <div class="wt-property-key">${esc(a.name)}</div>
-            <div class="wt-property-value">${esc(a.value)}</div>
-          </div>
-        `).join('')
-        :'<div class="wt-muted">No attributes.</div>'
+      if(/\.(woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|avif|ico|mp4|webm|mp3|wav)(\?|#|$)/i.test(lower)){
+        add(href,'asset',el);
       }
-    </div>
+    }
+  });
 
-    <div class="wt-card">
-      <div class="wt-card-title">Text</div>
-      <div class="wt-value">${esc((el.innerText||'').slice(0,4000))}</div>
-    </div>
+  try{
+    performance.getEntriesByType('resource').forEach(entry=>{
+      const name=entry&&entry.name;
 
-    <div class="wt-card">
-      <div class="wt-card-title">HTML</div>
-      <pre class="wt-code">${esc(el.outerHTML.slice(0,12000))}</pre>
-    </div>
+      if(!name)return;
 
-    <div class="wt-card">
-      <div class="wt-card-title">Computed Display</div>
-      <div class="wt-value">
-        ${esc(getComputedStyle(el).display)}
-      </div>
-    </div>
-  `;
+      const type=entry.initiatorType==='script'
+        ?'js'
+        :entry.initiatorType==='css'
+          ?'css'
+          :'asset';
 
-  root.querySelector('#wt-elements-back').onclick=renderElements;
+      add(name,type,null);
+    });
+  }catch{}
+
+  return list;
 };
 
-/* ============================================================
-   SOURCE
-   ============================================================ */
+const sanitizeExportDocument=()=>{
+  const clone=document.documentElement.cloneNode(true);
 
-const renderSource=()=>{
-  setToolbar(`
-    <button class="wt-small-btn" id="wt-source-copy">Copy HTML</button>
-    <button class="wt-small-btn" id="wt-source-refresh">Refresh</button>
-  `);
+  clone.querySelectorAll('#wt-app,#wt-modal,#wt-style').forEach(el=>el.remove());
 
-  const raw=document.documentElement.outerHTML;
+  clone.querySelectorAll('input,textarea,select').forEach(el=>{
+    try{
+      if(el.tagName==='INPUT'){
+        const type=(el.getAttribute('type')||'').toLowerCase();
 
-  view.innerHTML=`
-    <div class="wt-card">
-      <div class="wt-card-title">Current DOM Source</div>
-      <div class="wt-value wt-muted">
-        This is the current live DOM after JavaScript modifications.
-        It is not necessarily identical to the original server response.
-      </div>
-    </div>
+        if(type==='checkbox'||type==='radio'){
+          el.removeAttribute('checked');
+        }else{
+          el.removeAttribute('value');
+        }
+      }else if(el.tagName==='TEXTAREA'){
+        el.textContent='';
+      }else if(el.tagName==='SELECT'){
+        el.querySelectorAll('option').forEach(option=>{
+          option.removeAttribute('selected');
+        });
+      }
+    }catch{}
+  });
 
-    <div class="wt-code-wrap">
-      <div class="wt-code-head">
-        <button class="wt-copy" id="wt-copy-source">Copy</button>
-      </div>
-      <pre class="wt-code">${htmlHighlight(raw)}</pre>
-    </div>
-  `;
-
-  root.querySelector('#wt-source-copy').onclick=async()=>{
-    await copy(raw);
-  };
-
-  root.querySelector('#wt-copy-source').onclick=async e=>{
-    const ok=await copy(raw);
-    e.currentTarget.textContent=ok?'Copied':'Failed';
-    setTimeout(()=>e.currentTarget.textContent='Copy',900);
-  };
-
-  root.querySelector('#wt-source-refresh').onclick=renderSource;
+  return clone;
 };
 
-/* ============================================================
-   STORAGE EDITOR
-   ============================================================ */
+const pathForResource=(resource,used)=>{
+  const name=resourceName(resource.url,'resource');
+  let folder='assets';
 
-let storageType='local';
+  if(resource.type==='css')folder='css';
+  if(resource.type==='js')folder='js';
 
-const renderStorage=()=>{
-  setToolbar(`
-    <select class="wt-select" id="wt-storage-type">
-      <option value="local">Local Storage</option>
-      <option value="session">Session Storage</option>
-    </select>
+  return uniquePath(`${folder}/${name}`,used);
+};
 
-    <button class="wt-small-btn" id="wt-storage-add">Add</button>
-    <button class="wt-small-btn danger" id="wt-storage-clear">Clear</button>
-  `);
-
-  const select=root.querySelector('#wt-storage-type');
-  select.value=storageType;
-
-  select.onchange=()=>{
-    storageType=select.value;
-    renderStorage();
+const rewriteHTMLResourceReferences=(doc,mapping)=>{
+  const rewrite=url=>{
+    try{
+      const absolute=new URL(url,location.href).href;
+      return mapping.get(absolute)||url;
+    }catch{
+      return url;
+    }
   };
 
-  const store=storageType==='local'
-    ?localStorage
-    :sessionStorage;
+  doc.querySelectorAll('link[href]').forEach(el=>{
+    const original=el.getAttribute('href');
+    if(!original)return;
+    const replaced=rewrite(original);
+    if(replaced!==original)el.setAttribute('href',replaced);
+  });
 
+  doc.querySelectorAll('script[src]').forEach(el=>{
+    const original=el.getAttribute('src');
+    if(!original)return;
+    const replaced=rewrite(original);
+    if(replaced!==original)el.setAttribute('src',replaced);
+  });
+
+  doc.querySelectorAll('img[src],source[src],video[src],audio[src],iframe[src]').forEach(el=>{
+    const original=el.getAttribute('src');
+    if(!original)return;
+    const replaced=rewrite(original);
+    if(replaced!==original)el.setAttribute('src',replaced);
+  });
+
+  doc.querySelectorAll('[poster]').forEach(el=>{
+    const original=el.getAttribute('poster');
+    if(!original)return;
+    const replaced=rewrite(original);
+    if(replaced!==original)el.setAttribute('poster',replaced);
+  });
+
+  doc.querySelectorAll('[srcset]').forEach(el=>{
+    const original=el.getAttribute('srcset')||'';
+
+    const replaced=original.split(',').map(part=>{
+      const bits=part.trim().split(/\s+/);
+      if(!bits[0])return part;
+      bits[0]=rewrite(bits[0]);
+      return bits.join(' ');
+    }).join(', ');
+
+    el.setAttribute('srcset',replaced);
+  });
+};
+
+const rewriteCSSReferences=(cssText,cssURL,mapping)=>{
+  return cssText.replace(
+    /url\(\s*(['"]?)([^'")]+)\1\s*\)/gi,
+    (full,quote,value)=>{
+      const raw=value.trim();
+
+      if(!raw||raw.startsWith('data:')||raw.startsWith('#')||raw.startsWith('blob:')){
+        return full;
+      }
+
+      try{
+        const absolute=new URL(raw,cssURL).href;
+        const mapped=mapping.get(absolute);
+        if(mapped)return `url("${mapped}")`;
+      }catch{}
+
+      return full;
+    }
+  );
+};
+
+const makeTextBytes=text=>new TextEncoder().encode(text);
+
+const downloadBlob=(blob,name)=>{
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+
+  a.href=url;
+  a.download=name;
+  a.rel='noopener';
+  a.style.display='none';
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+};
+
+const createZipWithJSZip=async(JSZip,entries)=>{
+  const zip=new JSZip();
+
+  for(const entry of entries){
+    zip.file(entry.name,entry.data);
+  }
+
+  return zip.generateAsync({
+    type:'blob',
+    compression:'DEFLATE',
+    compressionOptions:{level:6}
+  });
+};
+
+const exportFrontendZIP=async()=>{
+  const filename=`${safeFileName(location.hostname||'page')}-frontend.zip`;
+
+  const progressModal=modal(
+    'Download Frontend ZIP',
+    `<div class="wt-card">
+      <div class="wt-label">Status</div>
+      <div class="wt-value" data-wt-status>Preparing frontend...</div>
+      <div class="wt-progress">
+        <div class="wt-progress-bar" data-wt-progress></div>
+      </div>
+      <div class="wt-status">
+        The export contains the currently loaded frontend and browser-accessible resources.
+      </div>
+    </div>`
+  );
+
+  let skipped=0;
+  let completed=0;
+
+  try{
+    const used=new Set();
+    const mapping=new Map();
+    const resourceResults=[];
+
+    setModalStatus(progressModal,'Preparing frontend...',5);
+
+    const exportDocument=sanitizeExportDocument();
+
+    setModalStatus(progressModal,'Collecting resources...',12);
+
+    const resources=collectFrontendResources();
+
+    for(let i=0;i<resources.length;i++){
+      const resource=resources[i];
+
+      try{
+        if(!isFetchableURL(resource.url)){
+          skipped++;
+          continue;
+        }
+
+        const resourceURL=new URL(resource.url);
+
+        if(resourceURL.origin!==location.origin){
+          skipped++;
+          continue;
+        }
+
+        const path=pathForResource(resource,used);
+        resourceResults.push({resource,path});
+        mapping.set(resourceURL.href,path);
+      }catch{
+        skipped++;
+      }
+    }
+
+    const entries=[];
+
+    for(const item of resourceResults){
+      const resource=item.resource;
+
+      try{
+        const fetched=await fetchResource(resource.url);
+        let data=new Uint8Array(fetched.buffer);
+
+        if(resource.type==='css'){
+          const text=new TextDecoder().decode(data);
+          const rewritten=rewriteCSSReferences(text,resource.url,mapping);
+          data=makeTextBytes(rewritten);
+        }
+
+        entries.push({name:item.path,data});
+      }catch{
+        skipped++;
+      }
+
+      completed++;
+
+      const progress=15+Math.round((completed/Math.max(resourceResults.length,1))*55);
+
+      setModalStatus(
+        progressModal,
+        `Collecting resources... ${completed}/${resourceResults.length}`,
+        progress
+      );
+    }
+
+    setModalStatus(progressModal,'Building ZIP...',75);
+
+    rewriteHTMLResourceReferences(exportDocument,mapping);
+
+    const html='<!DOCTYPE html>\n'+exportDocument.outerHTML;
+
+    entries.unshift({name:'index.html',data:makeTextBytes(html)});
+
+    let zipBlob;
+
+    try{
+      let JSZip=window.JSZip;
+
+      if(!JSZip){
+        try{
+          JSZip=await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        }catch{
+          JSZip=null;
+        }
+      }
+
+      zipBlob=JSZip
+        ?await createZipWithJSZip(JSZip,entries)
+        :makeStoredZip(entries);
+    }catch{
+      zipBlob=makeStoredZip(entries);
+    }
+
+    setModalStatus(progressModal,'Downloading...',95);
+
+    downloadBlob(zipBlob,filename);
+
+    setModalStatus(
+      progressModal,
+      skipped
+        ? `Export completed with ${skipped} inaccessible resources skipped.`
+        : 'Export completed successfully.',
+      100
+    );
+
+    const content=progressModal.querySelector('#wt-content');
+
+    if(content){
+      content.insertAdjacentHTML(
+        'beforeend',
+        `<div class="wt-card">
+          <div class="wt-label">Exported</div>
+          <div class="wt-value">${esc(filename)}</div>
+        </div>
+        <div class="wt-card">
+          <div class="wt-label">Privacy</div>
+          <div class="wt-note">
+            Cookies, localStorage, sessionStorage, authorization headers,
+            browser credentials and live form values were not included.
+            Backend/server-side source is not accessible through this export.
+          </div>
+        </div>`
+      );
+    }
+  }catch(e){
+    const message=e&&e.message?e.message:'The frontend export could not be completed.';
+    const content=progressModal.querySelector('#wt-content');
+
+    if(content){
+      content.innerHTML=`
+        <div class="wt-card">
+          <div class="wt-label">Export failed</div>
+          <div class="wt-value">${esc(message)}</div>
+        </div>
+        <div class="wt-card">
+          <div class="wt-note">
+            The page itself was not modified. Browser security restrictions
+            can prevent individual resources from being retrieved.
+          </div>
+        </div>
+      `;
+    }
+  }
+};
+
+addTool(
+  'download','Download Frontend ZIP',
+  'Export the loaded frontend HTML, CSS, JS and accessible assets',
+  ()=>{
+    exportFrontendZIP();
+  }
+);
+
+/* =========================================================
+   PAGE PDF
+   ========================================================= */
+
+const downloadPagePDF=()=>{
+  try{
+    panel.style.display='none';
+
+    const currentModal=document.getElementById('wt-modal');
+    if(currentModal)currentModal.remove();
+
+    /*
+     * The @media print rule in the main stylesheet already hides
+     * #wt-app and #wt-modal from the printed/PDF output, so no
+     * extra DOM manipulation is needed here — and nothing needs
+     * to be manually restored afterwards.
+     */
+    window.print();
+  }catch{
+    modal(
+      'Download Page as PDF',
+      `<div class="wt-card">
+        <div class="wt-label">Print unavailable</div>
+        <div class="wt-value">
+          This browser did not allow the print-to-PDF flow to start.
+        </div>
+      </div>`
+    );
+  }
+};
+
+addTool(
+  'pdf','Download Page as PDF',
+  'Save the current rendered page as a PDF',
+  ()=>{
+    downloadPagePDF();
+  }
+);
+
+/* =========================================================
+   DOM INSPECTOR
+   ========================================================= */
+
+addTool(
+  'inspector','DOM Inspector',
+  'Tap an element to inspect basic DOM information',
+  ()=>{
+    let active=true;
+
+    const oldStyle=document.getElementById('wt-inspector-style');
+    if(oldStyle)oldStyle.remove();
+
+    const st=document.createElement('style');
+    st.id='wt-inspector-style';
+    st.textContent='[data-wt-highlight]{outline:3px solid #6f93f2!important;outline-offset:2px!important;cursor:crosshair!important}';
+    document.head.appendChild(st);
+
+    const over=e=>{
+      if(!active||root.contains(e.target)||e.target.closest('#wt-modal'))return;
+      try{e.target.setAttribute('data-wt-highlight','');}catch{}
+    };
+
+    const out=e=>{
+      try{e.target.removeAttribute('data-wt-highlight');}catch{}
+    };
+
+    const click=e=>{
+      if(!active||root.contains(e.target)||e.target.closest('#wt-modal'))return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const el=e.target;
+
+      modal(
+        'Element',
+        card('Tag',esc(el.tagName))+
+        card('ID',esc(el.id||'(none)'))+
+        card('Classes',esc(typeof el.className==='string'?el.className:'(none)'))+
+        card('Text',esc((el.innerText||'').trim().slice(0,2000)))
+      );
+
+      bindCopies();
+    };
+
+    document.addEventListener('mouseover',over,true);
+    document.addEventListener('mouseout',out,true);
+    document.addEventListener('click',click,true);
+
+    alert('Inspector enabled for 30 seconds. Tap an element.');
+
+    setTimeout(()=>{
+      active=false;
+
+      document.removeEventListener('mouseover',over,true);
+      document.removeEventListener('mouseout',out,true);
+      document.removeEventListener('click',click,true);
+
+      try{
+        document.querySelectorAll('[data-wt-highlight]').forEach(el=>{
+          el.removeAttribute('data-wt-highlight');
+        });
+      }catch{}
+
+      st.remove();
+    },30000);
+  }
+);
+
+/* =========================================================
+   PAGE SOURCE — sticky copy toolbar + color-coded HTML
+   ========================================================= */
+
+addTool(
+  'source','Page Source',
+  'Open the current document HTML in a readable, color-coded viewer',
+  ()=>{
+    const raw=document.documentElement.outerHTML;
+
+    modal(
+      'Document HTML',
+      `<div class="wt-code-wrap">
+        <div class="wt-code-toolbar">
+          <button class="wt-copy" data-copy="${esc(raw)}">Copy HTML</button>
+        </div>
+        <pre class="wt-code"><code>${highlightHTML(raw)}</code></pre>
+      </div>`
+    );
+
+    bindCopies();
+  }
+);
+
+/* =========================================================
+   COPY PAGE TEXT
+   ========================================================= */
+
+addTool(
+  'copy','Copy Page Text',
+  'Copy visible page text to clipboard',
+  async()=>{
+    const ok=await copy(document.body.innerText||'');
+    alert(ok?'Visible page text copied.':'Clipboard permission denied.');
+  }
+);
+
+/* =========================================================
+   LINKS — now shows internal/external + new-tab badges
+   ========================================================= */
+
+addTool(
+  'links','Links',
+  'List all links, and mark internal vs external destinations',
+  ()=>{
+    const data=[...document.links];
+
+    modal(
+      'Links',
+      data.length
+      ? `<table class="wt-table">
+          <tr><th>#</th><th>Text</th><th>Destination</th><th>Type</th></tr>
+          ${data.map((a,i)=>{
+            let internal=true;
+            try{internal=new URL(a.href).origin===location.origin;}catch{}
+
+            const badge=internal
+              ?'<span class="wt-badge">Internal</span>'
+              :'<span class="wt-badge wt-badge-accent">External</span>';
+
+            const newTab=a.target==='_blank'
+              ?'<span class="wt-badge">New tab</span>'
+              :'';
+
+            return `
+            <tr>
+              <td>${i+1}</td>
+              <td>${esc(a.innerText.trim()||'(no text)')}</td>
+              <td>${urlHTML(a.href)}</td>
+              <td>${badge}${newTab}</td>
+            </tr>`;
+          }).join('')}
+        </table>`
+      : empty('No links found.')
+    );
+  }
+);
+
+/* =========================================================
+   IMAGES — now flags missing alt text
+   ========================================================= */
+
+addTool(
+  'images','Images',
+  'View images with source URLs and accessibility alt text',
+  ()=>{
+    const data=[...document.images];
+
+    modal(
+      'Images',
+      data.length
+      ? data.map((img,i)=>{
+        const alt=img.getAttribute('alt');
+        const altHTML=alt
+          ?`<div class="wt-value">${esc(alt)}</div>`
+          :'<span class="wt-badge wt-badge-warn">Missing alt text</span>';
+
+        return `
+        <div class="wt-card">
+          <div class="wt-label">Image ${i+1}</div>
+          <div class="wt-value">${urlHTML(img.src)}</div>
+          <img class="wt-preview" src="${esc(img.src)}" loading="lazy">
+          <div class="wt-label" style="margin-top:8px">Dimensions</div>
+          <div class="wt-value">${img.naturalWidth||'?'} × ${img.naturalHeight||'?'}</div>
+          <div class="wt-label" style="margin-top:8px">Alt Text</div>
+          ${altHTML}
+        </div>
+      `;}).join('')
+      : empty('No images found.')
+    );
+  }
+);
+
+/* =========================================================
+   FORMS — now shows required-field counts
+   ========================================================= */
+
+addTool(
+  'forms','Forms',
+  'Inspect forms, actions, methods and field details',
+  ()=>{
+    const data=[...document.forms];
+
+    modal(
+      'Forms',
+      data.length
+      ? data.map((f,i)=>{
+        const required=[...f.elements].filter(e=>e.required).length;
+
+        return `
+        <div class="wt-card">
+          <div class="wt-label">Form ${i+1}</div>
+          <div class="wt-value">
+            <strong>Action:</strong> ${urlHTML(f.action)}<br>
+            <strong>Method:</strong> ${esc(f.method||'get')}<br>
+            <strong>Fields:</strong> ${f.elements.length}
+            ${required?`<span class="wt-badge wt-badge-accent">${required} required</span>`:''}
+          </div>
+          <br>
+          <table class="wt-table">
+            <tr><th>Name</th><th>Type</th><th>Tag</th></tr>
+            ${[...f.elements].map(e=>`
+              <tr>
+                <td>${esc(e.name||'(none)')}${e.required?' <span class="wt-badge wt-badge-warn">Required</span>':''}</td>
+                <td>${esc(e.type||'(none)')}</td>
+                <td>${esc(e.tagName)}</td>
+              </tr>`).join('')}
+          </table>
+        </div>
+      `;}).join('')
+      : empty('No forms found.')
+    );
+  }
+);
+
+/* =========================================================
+   HEADINGS
+   ========================================================= */
+
+addTool(
+  'headings','Headings',
+  'View document heading structure',
+  ()=>{
+    const data=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+
+    modal(
+      'Headings',
+      data.length
+      ? data.map((h,i)=>`
+        <div class="wt-card">
+          <div class="wt-label">${h.tagName} — ${i+1}</div>
+          <div class="wt-value">${esc(h.innerText.trim())}</div>
+        </div>
+      `).join('')
+      : empty('No headings found.')
+    );
+  }
+);
+
+/* =========================================================
+   SCRIPTS
+   ========================================================= */
+
+addTool(
+  'scripts','Scripts',
+  'List JavaScript files used by the page',
+  ()=>{
+    const data=[...document.scripts];
+
+    modal(
+      'Scripts',
+      data.length
+      ? data.map((s,i)=>`
+        <div class="wt-card">
+          <div class="wt-label">Script ${i+1}</div>
+          <div class="wt-value">
+            ${s.src?urlHTML(s.src):'(inline script)'}
+          </div>
+        </div>
+      `).join('')
+      : empty('No scripts found.')
+    );
+  }
+);
+
+/* =========================================================
+   RESOURCES
+   ========================================================= */
+
+addTool(
+  'resources','Resources',
+  'Inspect resources loaded by the current page',
+  ()=>{
+    const data=performance.getEntriesByType('resource');
+
+    modal(
+      'Resources',
+      data.length
+      ? `<table class="wt-table">
+          <tr><th>#</th><th>Type</th><th>Duration</th><th>Resource</th></tr>
+          ${data.map((x,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td>${esc(x.initiatorType||'unknown')}</td>
+              <td>${x.duration.toFixed(1)} ms</td>
+              <td>${urlHTML(x.name)}</td>
+            </tr>`).join('')}
+        </table>`
+      : empty('No resource entries available.')
+    );
+  }
+);
+
+/* =========================================================
+   PERFORMANCE
+   ========================================================= */
+
+addTool(
+  'performance','Performance',
+  'Navigation timing and page load metrics',
+  ()=>{
+    const p=performance.getEntriesByType('navigation')[0];
+
+    if(!p){
+      modal('Performance',empty('Navigation timing unavailable.'));
+      return;
+    }
+
+    modal(
+      'Performance',
+      `<div class="wt-stat-grid">
+        <div class="wt-stat"><div class="wt-stat-num">${p.domainLookupEnd-p.domainLookupStart|0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DNS</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${p.responseEnd-p.responseStart|0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">Response</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${p.domInteractive|0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DOM Interactive</div></div>
+        <div class="wt-stat"><div class="wt-stat-num">${p.domComplete|0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DOM Complete</div></div>
+      </div>`
+    );
+  }
+);
+
+/* =========================================================
+   LOCAL STORAGE
+   ========================================================= */
+
+const storageViewer=(name,store)=>{
   let rows=[];
 
   try{
     for(let i=0;i<store.length;i++){
       const key=store.key(i);
-
-      if(key!==null){
-        rows.push([key,store.getItem(key)]);
-      }
+      rows.push([key,store.getItem(key)]);
     }
   }catch(e){
-    view.innerHTML=`
-      <div class="wt-card">
-        <div class="wt-value" style="color:var(--red)">
-          ${esc(e.message)}
-        </div>
-      </div>
-    `;
+    modal(name,`<div class="wt-card">${esc(e.message)}</div>`);
     return;
   }
 
-  view.innerHTML=`
-    <div class="wt-card">
-      <div class="wt-card-title">${storageType==='local'?'Local':'Session'} Storage</div>
-      <div class="wt-value">${rows.length} item(s)</div>
-    </div>
-
-    ${
-      rows.length
-      ?rows.map((r,i)=>`
-        <div class="wt-card">
-          <div style="display:flex;gap:6px">
-            <input
-              class="wt-input"
-              data-storage-key="${i}"
-              value="${attrEsc(r[0])}"
-              placeholder="Key"
-            >
-            <button class="wt-small-btn" data-storage-save="${i}">Save</button>
-            <button class="wt-small-btn danger" data-storage-delete="${i}">Delete</button>
-          </div>
-
-          <textarea
-            class="wt-input"
-            data-storage-value="${i}"
-            style="width:100%;margin-top:7px;min-height:75px;resize:vertical"
-          >${esc(r[1])}</textarea>
-        </div>
-      `).join('')
-      :'<div class="wt-empty">Storage is empty.</div>'
-    }
-  `;
-
-  root.querySelector('#wt-storage-clear').onclick=()=>{
-    if(confirm('Clear all storage items?')){
-      store.clear();
-      renderStorage();
-    }
-  };
-
-  root.querySelector('#wt-storage-add').onclick=()=>{
-    const key=prompt('Storage key:');
-
-    if(key===null)return;
-
-    const value=prompt('Storage value:','');
-
-    if(value===null)return;
-
-    try{
-      store.setItem(key,value);
-      renderStorage();
-    }catch(e){
-      alert(e.message);
-    }
-  };
-
-  rows.forEach((r,i)=>{
-    root.querySelector(`[data-storage-save="${i}"]`).onclick=()=>{
-      const keyEl=root.querySelector(`[data-storage-key="${i}"]`);
-      const valEl=root.querySelector(`[data-storage-value="${i}"]`);
-
-      try{
-        if(keyEl.value!==r[0]){
-          store.removeItem(r[0]);
-        }
-
-        store.setItem(keyEl.value,valEl.value);
-        renderStorage();
-      }catch(e){
-        alert(e.message);
-      }
-    };
-
-    root.querySelector(`[data-storage-delete="${i}"]`).onclick=()=>{
-      store.removeItem(r[0]);
-      renderStorage();
-    };
-  });
-};
-
-/* ============================================================
-   CSS / JS RESOURCES
-   ============================================================ */
-
-const getResources=()=>{
-  const cssResources=[];
-  const jsResources=[];
-
-  [...document.querySelectorAll('link[rel~="stylesheet"][href]')]
-    .forEach(x=>{
-      cssResources.push({
-        url:x.href,
-        type:'css',
-        element:x
-      });
-    });
-
-  [...document.querySelectorAll('style')]
-    .forEach((x,i)=>{
-      cssResources.push({
-        url:`inline-style-${i+1}`,
-        type:'css-inline',
-        element:x,
-        content:x.textContent||''
-      });
-    });
-
-  [...document.scripts]
-    .forEach((x,i)=>{
-      jsResources.push({
-        url:x.src||`inline-script-${i+1}`,
-        type:x.src?'js':'js-inline',
-        element:x,
-        content:x.src?'':x.textContent||''
-      });
-    });
-
-  return [...cssResources,...jsResources];
-};
-
-let resourceFilter='all';
-
-const renderResources=()=>{
-  setToolbar(`
-    <select class="wt-select" id="wt-resource-type">
-      <option value="all">All</option>
-      <option value="css">CSS</option>
-      <option value="js">JavaScript</option>
-    </select>
-  `);
-
-  const resources=getResources();
-
-  const select=root.querySelector('#wt-resource-type');
-
-  select.value=resourceFilter;
-
-  select.onchange=()=>{
-    resourceFilter=select.value;
-    renderResources();
-  };
-
-  const filtered=resources.filter(r=>{
-    if(resourceFilter==='all')return true;
-    return r.type.startsWith(resourceFilter);
-  });
-
-  if(!filtered.length){
-    view.innerHTML=`<div class="wt-empty">No resources found.</div>`;
-    return;
-  }
-
-  view.innerHTML=`
-    <div class="wt-split">
-      <div class="wt-list">
-        ${filtered.map((r,i)=>`
-          <div class="wt-list-item" data-resource="${i}">
-            <div class="wt-list-title">
-              ${r.type.startsWith('css')?'CSS':'JS'}
-              · ${esc(r.url)}
-            </div>
-            <div class="wt-list-sub">
-              ${r.type.includes('inline')?'Inline resource':'External resource'}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="wt-detail" id="wt-resource-detail">
-        <div class="wt-empty">Select a resource.</div>
-      </div>
-    </div>
-  `;
-
-  [...view.querySelectorAll('[data-resource]')].forEach((el,i)=>{
-    el.onclick=()=>{
-      view.querySelectorAll('.wt-list-item')
-        .forEach(x=>x.classList.remove('active'));
-
-      el.classList.add('active');
-
-      showResource(filtered[i]);
-    };
-  });
-};
-
-const showResource=async resource=>{
-  const detail=root.querySelector('#wt-resource-detail');
-
-  if(!detail)return;
-
-  detail.innerHTML=`
-    <div class="wt-resource-body">
-      <div class="wt-card-title">${resource.type}</div>
-      <div class="wt-value">${esc(resource.url)}</div>
-    </div>
-    <div class="wt-empty">Loading...</div>
-  `;
-
-  let content=resource.content||'';
-
-  if(!content&&resource.url&&/^https?:/i.test(resource.url)){
-    try{
-      const response=await fetch(resource.url,{credentials:'same-origin'});
-
-      if(response.ok){
-        content=await response.text();
-      }else{
-        content=`Unable to load resource. HTTP ${response.status}`;
-      }
-    }catch(e){
-      content=`Unable to read resource from page context: ${e.message}`;
-    }
-  }
-
-  detail.innerHTML=`
-    <div class="wt-resource-body">
+  modal(
+    name,
+    rows.length
+    ? rows.map(r=>`
       <div class="wt-card">
-        <div class="wt-card-title">Resource</div>
-        <div class="wt-value">${esc(resource.url)}</div>
+        <button class="wt-copy" data-copy="${esc(r[1])}">Copy</button>
+        <div class="wt-label">${esc(r[0])}</div>
+        <div class="wt-value">${esc(r[1])}</div>
       </div>
+    `).join('')
+    : empty('Storage is empty.')
+  );
 
-      <div class="wt-card">
-        <button class="wt-copy" id="wt-resource-copy">Copy</button>
-        <div class="wt-card-title">Content</div>
-      </div>
-
-      <div class="wt-code-wrap">
-        <pre class="wt-code">${esc(content.slice(0,200000))}</pre>
-      </div>
-    </div>
-  `;
-
-  root.querySelector('#wt-resource-copy').onclick=async e=>{
-    const ok=await copy(content);
-    e.currentTarget.textContent=ok?'Copied':'Failed';
-
-    setTimeout(()=>{
-      e.currentTarget.textContent='Copy';
-    },900);
-  };
+  bindCopies();
 };
 
-/* ============================================================
-   EXTRA TOOLS IN TOOLBAR / TAB LONGER FUNCTIONS
-   ============================================================ */
+addTool(
+  'localStorage','Local Storage',
+  'View current site localStorage keys and values',
+  ()=>storageViewer('Local Storage',localStorage)
+);
 
-/* Keyboard shortcut:
-   Ctrl/Cmd + Shift + W toggles toolkit.
-*/
-document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='w'){
-    e.preventDefault();
-    panel.classList.toggle('open');
+/* =========================================================
+   SESSION STORAGE
+   ========================================================= */
 
-    if(panel.classList.contains('open')){
-      renderCurrent();
-    }
+addTool(
+  'sessionStorage','Session Storage',
+  'View current site sessionStorage keys and values',
+  ()=>storageViewer('Session Storage',sessionStorage)
+);
+
+/* =========================================================
+   COOKIES
+   ========================================================= */
+
+addTool(
+  'cookies','Cookies',
+  'Show cookie access status without exposing cookie values',
+  ()=>{
+    modal(
+      'Cookies',
+      card('Browser Cookie Support',navigator.cookieEnabled?'Enabled':'Disabled')+
+      `<div class="wt-card">
+        <div class="wt-label">Security</div>
+        <div class="wt-value">Cookie values are intentionally not displayed.</div>
+      </div>`
+    );
   }
+);
 
-  if(e.key==='Escape'){
-    if(pickerActive)return;
-    panel.classList.remove('open');
-  }
-},true);
-
-/* Search current panel */
+/* =========================================================
+   SEARCH
+   ========================================================= */
 
 search.oninput=()=>{
   const q=search.value.toLowerCase().trim();
 
-  if(currentTab==='network'){
-    document.querySelectorAll('#wt-view .wt-row').forEach(row=>{
-      row.style.display=
-        !q||row.textContent.toLowerCase().includes(q)
-        ?''
-        :'none';
-    });
-  }else{
-    document.querySelectorAll('#wt-view .wt-card,#wt-view .wt-list-item').forEach(el=>{
-      el.style.display=
-        !q||el.textContent.toLowerCase().includes(q)
-        ?''
-        :'none';
-    });
+  tools.querySelectorAll('.wt-tool').forEach(b=>{
+    b.style.display=!q||b.dataset.search.includes(q)?'flex':'none';
+  });
+};
+
+/* =========================================================
+   LAUNCHER / CLOSE
+   ========================================================= */
+
+root.querySelector('#wt-launch').onclick=()=>{
+  panel.style.display=
+    panel.style.display==='none'||!panel.style.display
+      ?'block'
+      :'none';
+};
+
+root.querySelector('#wt-close').onclick=()=>{
+  panel.style.display='none';
+};
+
+/*
+ * Clicking anywhere on the underlying page (outside the panel and
+ * outside any open modal) closes the panel automatically, so the
+ * floating tool never traps interaction with the site itself.
+ */
+document.addEventListener('click',e=>{
+  if(panel.style.display!=='block')return;
+  if(root.contains(e.target))return;
+  if(e.target.closest && e.target.closest('#wt-modal'))return;
+  panel.style.display='none';
+},true);
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+
+  const openModal=document.getElementById('wt-modal');
+
+  if(openModal){
+    openModal.remove();
+    return;
   }
-};
 
-/* ============================================================
-   DESTROY / CLEANUP
-   ============================================================ */
-
-state.destroy=()=>{
-  state.destroyed=true;
-
-  try{
-    window.fetch=state.original.fetch;
-
-    XMLHttpRequest.prototype.open=state.original.XHR.open;
-    XMLHttpRequest.prototype.send=state.original.XHR.send;
-    XMLHttpRequest.prototype.setRequestHeader=
-      state.original.XHR.setRequestHeader;
-
-    console.log=state.original.console.log;
-    console.info=state.original.console.info;
-    console.warn=state.original.console.warn;
-    console.error=state.original.console.error;
-    console.debug=state.original.console.debug;
-  }catch{}
-
-  try{
-    networkObserver?.disconnect();
-  }catch{}
-
-  root.remove();
-
-  style.remove();
-
-  document.querySelectorAll('[data-wt-picker-highlight]')
-    .forEach(x=>x.removeAttribute('data-wt-picker-highlight'));
-
-  document.querySelector('#wt-picker-style')?.remove();
-};
-
-window.__WEBTOOLS_V2.destroy=state.destroy;
-
-/* ============================================================
-   INITIAL RENDER
-   ============================================================ */
-
-updateBadges();
-renderOverview();
+  if(panel.style.display==='block'){
+    panel.style.display='none';
+  }
+},true);
 
 })();
-
