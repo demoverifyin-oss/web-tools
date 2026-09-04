@@ -50,6 +50,8 @@ const state={
 const root=document.createElement('div');
 window.__WEBTOOLS_V2=root;
 
+document.body.appendChild(root);
+
 const Z=2147483647;
 
 const esc=v=>String(v??'')
@@ -127,7 +129,13 @@ const css=`
 #wt-v2 *{box-sizing:border-box}
 
 #wt-launch{
-  display:flex;
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  position:fixed !important;
+  right:16px !important;
+  bottom:16px !important;
+  z-index:2147483647 !important;
   align-items:center;
   gap:8px;
   border:1px solid #ffffff18;
@@ -138,7 +146,12 @@ const css=`
   font-weight:650;
   cursor:pointer;
   box-shadow:0 14px 38px #000b;
+  pointer-events:auto !important;
 }
+
+root.innerHTML=`
+...
+`;
 
 #wt-panel{
   display:none;
