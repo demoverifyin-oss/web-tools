@@ -1,1727 +1,5292 @@
 (() => {
 'use strict';
 
-if (window.__WEBTOOLS) {
-  window.__WEBTOOLS.remove();
-  delete window.__WEBTOOLS;
+/* =========================================================
+   WEB TOOLS PRO
+   Advanced browser inspection toolkit
+   Version 2.0
+   ========================================================= */
+
+if (window.__WEBTOOLS_PRO__) {
+  window.__WEBTOOLS_PRO__.remove();
+  delete window.__WEBTOOLS_PRO__;
   return;
 }
 
-const root = document.createElement('div');
-window.__WEBTOOLS = root;
-
-const esc = v => String(v ?? '')
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
-
-const Z = 2147483647;
-
-/* ---------- Minimal line-icon set ---------- */
-const ic = (paths, size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-
-const ICONS = {
-  brand: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
-  drag: '<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>',
-  search: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-  close: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-  overview: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
-  download: '<path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14a2 2 0 0 0 2-2v-2"/><path d="M3 17v2a2 2 0 0 0 2 2"/>',
-  pdf: '<path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 15h2a2 2 0 0 0 0-4H8v7"/><path d="M13 11v7h1a3.5 3.5 0 0 0 0-7z"/><line x1="19" y1="11" x2="16" y2="11"/><line x1="16" y1="11" x2="16" y2="18"/>',
-  links: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-  images: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
-  forms: '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 14 11 16 15 12"/>',
-  headings: '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
-  inspector: '<circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
-  localStorage: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/>',
-  sessionStorage: '<path d="M22 18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
-  performance: '<polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/>',
-  resources: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
-  cookies: '<path d="M12 22s7-3.5 7-9V6l-7-3-7 3v7c0 5.5 7 9 7 9z"/>',
-  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-  source: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
-  scripts: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'
-};
-
-const css = `
-:root{
-  --wt-panel:#101216f5;
-  --wt-card:#171a1f;
-  --wt-border:#252932;
-  --wt-border-soft:#1c2028;
-  --wt-text:#eef0f4;
-  --wt-text-dim:#868f9f;
-  --wt-accent:#6f93f2;
-  --wt-accent-soft:#6f93f21c;
-  --wt-radius:16px;
-  --wt-safe-b:env(safe-area-inset-bottom,0px);
-}
-
-#wt-app{
-  position:fixed;
-  right:16px;
-  bottom:calc(16px + var(--wt-safe-b));
-  z-index:${Z};
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
-  color:var(--wt-text);
-  -webkit-tap-highlight-color:transparent;
-  touch-action:none;
-}
-
-#wt-launch{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  border:1px solid #ffffff14;
-  background:linear-gradient(160deg,#181b21,#0c0e12);
-  color:#fff;
-  border-radius:999px;
-  padding:12px 14px 12px 17px;
-  font-size:13.5px;
-  font-weight:600;
-  letter-spacing:.01em;
-  box-shadow:0 10px 28px #0009,inset 0 1px 0 #ffffff10;
-  cursor:grab;
-  transition:transform .15s ease,box-shadow .15s ease;
-  user-select:none;
-}
-#wt-launch.wt-dragging{
-  cursor:grabbing;
-  transform:scale(1.04);
-  box-shadow:0 16px 40px #000c,inset 0 1px 0 #ffffff10;
-}
-#wt-launch:active:not(.wt-dragging){transform:scale(.96)}
-#wt-launch svg{opacity:.9;pointer-events:none}
-#wt-launch span{pointer-events:none}
-#wt-drag-hint{
-  opacity:.45;
-  margin-left:2px;
-  display:flex;
-}
-
-#wt-panel{
-  display:none;
-  position:fixed;
-  width:380px;
-  max-width:calc(100vw - 32px);
-  max-height:74vh;
-  overflow:hidden;
-  background:var(--wt-panel);
-  backdrop-filter:blur(22px) saturate(160%);
-  -webkit-backdrop-filter:blur(22px) saturate(160%);
-  border:1px solid var(--wt-border);
-  border-radius:var(--wt-radius);
-  box-shadow:0 25px 70px #000c,0 0 0 1px #ffffff08 inset;
-  animation:wt-pop .18s cubic-bezier(.2,.9,.3,1.3);
-  z-index:${Z};
-}
-@keyframes wt-pop{
-  from{opacity:0;transform:translateY(8px) scale(.97)}
-  to{opacity:1;transform:translateY(0) scale(1)}
-}
-
-#wt-head{
-  padding:17px 17px 13px;
-  border-bottom:1px solid var(--wt-border-soft);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-}
-#wt-title{
-  font-size:15.5px;
-  font-weight:700;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-#wt-title svg{color:var(--wt-accent)}
-#wt-sub{
-  color:var(--wt-text-dim);
-  font-size:11px;
-  margin-top:3px;
-  font-weight:500;
-}
-#wt-close{
-  background:#ffffff0d;
-  color:#cfd4de;
-  border:1px solid #ffffff14;
-  width:29px;
-  height:29px;
-  border-radius:9px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  transition:background .15s;
-}
-#wt-close:active{background:#ffffff1f}
-
-#wt-search-wrap{
-  margin:13px;
-  position:relative;
-  display:flex;
-  align-items:center;
-}
-#wt-search{
-  width:100%;
-  box-sizing:border-box;
-  background:#0000003d;
-  border:1px solid var(--wt-border);
-  color:#fff;
-  padding:10px 12px 10px 34px;
-  border-radius:11px;
-  outline:none;
-  font-size:13.5px;
-  transition:border-color .15s,background .15s;
-}
-#wt-search::placeholder{color:#6d7482}
-#wt-search:focus{border-color:var(--wt-accent);background:#00000055}
-#wt-search-ico{
-  position:absolute;
-  left:11px;
-  color:var(--wt-text-dim);
-  display:flex;
-  pointer-events:none;
-}
-
-#wt-tools{
-  padding:0 11px 13px;
-  overflow:auto;
-  max-height:52vh;
-  display:grid;
-  gap:5px;
-}
-
-.wt-tool{
-  width:100%;
-  text-align:left;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:10px 11px;
-  background:#ffffff05;
-  border:1px solid transparent;
-  color:var(--wt-text);
-  border-radius:12px;
-  cursor:pointer;
-  transition:.15s;
-}
-.wt-tool:hover{background:var(--wt-accent-soft);border-color:#6f93f230}
-.wt-tool:active{transform:scale(.985)}
-.wt-tool-ico{
-  flex:0 0 auto;
-  width:32px;
-  height:32px;
-  border-radius:9px;
-  background:#ffffff08;
-  border:1px solid var(--wt-border-soft);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:var(--wt-text-dim);
-}
-.wt-tool-body{min-width:0}
-.wt-tool-title{
-  font-size:13px;
-  font-weight:600;
-}
-.wt-tool-desc{
-  color:var(--wt-text-dim);
-  font-size:11px;
-  margin-top:2px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-#wt-modal{
-  position:fixed;
-  inset:0;
-  z-index:${Z};
-  background:#050608cc;
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  animation:wt-fade .15s ease;
-}
-@keyframes wt-fade{from{opacity:0}to{opacity:1}}
-
-#wt-box{
-  width:min(880px,100%);
-  max-height:88vh;
-  overflow:hidden;
-  background:var(--wt-panel);
-  backdrop-filter:blur(24px) saturate(160%);
-  -webkit-backdrop-filter:blur(24px) saturate(160%);
-  border:1px solid var(--wt-border);
-  border-radius:20px 20px 0 0;
-  box-shadow:0 -20px 60px #000d;
-  animation:wt-slide .2s cubic-bezier(.2,.9,.3,1.1);
-  padding-bottom:var(--wt-safe-b);
-  display:flex;
-  flex-direction:column;
-}
-@keyframes wt-slide{
-  from{transform:translateY(24px);opacity:0}
-  to{transform:translateY(0);opacity:1}
-}
-
-#wt-box-grip{
-  width:34px;
-  height:4px;
-  background:#ffffff24;
-  border-radius:99px;
-  margin:9px auto 0;
-  flex:0 0 auto;
-}
-
-#wt-box-head{
-  padding:11px 17px 13px;
-  border-bottom:1px solid var(--wt-border-soft);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  flex:0 0 auto;
-}
-#wt-box-title{
-  font-size:14.5px;
-  font-weight:700;
-}
-#wt-box-close{
-  border:1px solid var(--wt-border);
-  background:#ffffff0d;
-  color:#e2e5eb;
-  border-radius:9px;
-  padding:6px 11px;
-  cursor:pointer;
-  font-size:12px;
-  font-weight:600;
-}
-#wt-box-close:active{background:#ffffff1f}
-
-#wt-content{
-  padding:15px 17px 20px;
-  overflow:auto;
-  max-height:calc(88vh - 74px);
-  flex:1 1 auto;
-}
-
-.wt-card{
-  background:var(--wt-card);
-  border:1px solid var(--wt-border-soft);
-  border-radius:12px;
-  padding:12px 13px;
-  margin-bottom:8px;
-}
-.wt-label{
-  color:var(--wt-text-dim);
-  font-size:9.5px;
-  text-transform:uppercase;
-  letter-spacing:.07em;
-  margin-bottom:5px;
-  font-weight:700;
-}
-.wt-value{
-  color:var(--wt-text);
-  font-size:12.5px;
-  line-height:1.5;
-  word-break:break-word;
-}
-.wt-url{
-  color:var(--wt-accent);
-  text-decoration:none;
-  word-break:break-all;
-}
-.wt-url:hover{text-decoration:underline}
-.wt-domain{
-  display:inline-block;
-  background:#ffffff0d;
-  border:1px solid var(--wt-border-soft);
-  color:var(--wt-text-dim);
-  font-size:10px;
-  font-weight:700;
-  padding:2px 7px;
-  border-radius:999px;
-  margin-bottom:5px;
-}
-.wt-copy{
-  float:right;
-  background:#ffffff0d;
-  border:1px solid var(--wt-border);
-  color:#dce1e8;
-  border-radius:8px;
-  padding:5px 10px;
-  cursor:pointer;
-  font-size:10.5px;
-  font-weight:600;
-  transition:background .15s;
-  white-space:nowrap;
-}
-.wt-copy:active{background:#ffffff1f}
-
-.wt-stat-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-}
-.wt-stat{
-  background:var(--wt-card);
-  border:1px solid var(--wt-border-soft);
-  border-radius:12px;
-  padding:13px;
-}
-.wt-stat-num{
-  font-size:20px;
-  font-weight:800;
-  color:var(--wt-text);
-}
-.wt-stat-label{
-  color:var(--wt-text-dim);
-  font-size:10.5px;
-  margin-top:3px;
-  font-weight:600;
-}
-
-.wt-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:11.5px;
-}
-.wt-table th,.wt-table td{
-  border-bottom:1px solid var(--wt-border-soft);
-  padding:9px 7px;
-  text-align:left;
-  vertical-align:top;
-}
-.wt-table tr:hover td{background:#ffffff05}
-.wt-table th{
-  color:var(--wt-text-dim);
-  font-weight:700;
-  font-size:10px;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-  position:sticky;
-  top:0;
-  background:var(--wt-panel);
-}
-.wt-preview{
-  width:100%;
-  max-height:220px;
-  object-fit:contain;
-  background:#050608;
-  border-radius:9px;
-  margin-top:8px;
-  border:1px solid var(--wt-border-soft);
-}
-
-.wt-empty{
-  text-align:center;
-  color:var(--wt-text-dim);
-  font-size:12px;
-  padding:24px 10px;
-}
-
-.wt-progress{
-  height:6px;
-  background:#ffffff0a;
-  border:1px solid var(--wt-border-soft);
-  border-radius:99px;
-  overflow:hidden;
-  margin-top:10px;
-}
-.wt-progress-bar{
-  width:0%;
-  height:100%;
-  background:var(--wt-accent);
-  transition:width .18s ease;
-}
-.wt-status{
-  color:var(--wt-text-dim);
-  font-size:11px;
-  margin-top:8px;
-}
-.wt-note{
-  color:var(--wt-text-dim);
-  font-size:11px;
-  line-height:1.55;
-}
-
-/* ---- sticky source-code toolbar + highlighted code ---- */
-#wt-content.wt-source-content{padding-top:0}
-.wt-source-bar{
-  position:sticky;
-  top:0;
-  z-index:4;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  padding:12px 0 10px;
-  margin-bottom:6px;
-  background:linear-gradient(var(--wt-panel) 78%, transparent);
-}
-.wt-source-bar .wt-copy{float:none}
-.wt-source-meta{
-  color:var(--wt-text-dim);
-  font-size:11px;
-  font-weight:600;
-}
-.wt-code-wrap{
-  background:#0b0d11;
-  border:1px solid var(--wt-border-soft);
-  border-radius:12px;
-  overflow:auto;
-}
-.wt-code-wrap pre{
-  margin:0;
-  padding:13px;
-}
-.wt-code-wrap code{
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  font-size:11.5px;
-  line-height:1.6;
-  white-space:pre;
-}
-.hljs{background:transparent!important;padding:0!important;color:#c9d1d9}
-
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:99px}
-
-@media(max-width:600px){
-  #wt-box{border-radius:18px 18px 0 0}
-}
-
-@media print{
-  #wt-app,
-  #wt-modal{
-    display:none!important;
-  }
-}
-`;
-
-const style = document.createElement('style');
-style.id = 'wt-style';
-style.textContent = css;
-document.head.appendChild(style);
-
-root.id = 'wt-app';
-
-root.innerHTML = `
-<button id="wt-launch" title="Drag to move · Tap to open">
-  ${ic(ICONS.brand, 16)}<span>Web Tools</span><span id="wt-drag-hint">${ic(ICONS.drag, 13)}</span>
-</button>
-
-<div id="wt-panel">
-  <div id="wt-head">
-    <div>
-      <div id="wt-title">${ic(ICONS.brand, 15)}Web Tools</div>
-      <div id="wt-sub">Browser inspection toolkit</div>
-    </div>
-    <button id="wt-close">${ic(ICONS.close, 15)}</button>
-  </div>
-
-  <div id="wt-search-wrap">
-    <span id="wt-search-ico">${ic(ICONS.search, 15)}</span>
-    <input id="wt-search" placeholder="Search tools...">
-  </div>
-
-  <div id="wt-tools"></div>
-</div>
-`;
-
-document.body.appendChild(root);
-
-const launch = root.querySelector('#wt-launch');
-const panel = root.querySelector('#wt-panel');
-const tools = root.querySelector('#wt-tools');
-const search = root.querySelector('#wt-search');
-
 /* =========================================================
-   MODAL HELPERS
+   CORE
    ========================================================= */
 
-const modal = (title, html) => {
-  const old = document.getElementById('wt-modal');
-  if (old) old.remove();
+const APP_ID = 'wt-pro-app';
+const STYLE_ID = 'wt-pro-style';
+const Z = 2147483647;
 
-  const m = document.createElement('div');
-  m.id = 'wt-modal';
-
-  m.innerHTML = `
-    <div id="wt-box">
-      <div id="wt-box-grip"></div>
-      <div id="wt-box-head">
-        <div id="wt-box-title">${esc(title)}</div>
-        <button id="wt-box-close">Close</button>
-      </div>
-      <div id="wt-content">${html}</div>
-    </div>
-  `;
-
-  document.body.appendChild(m);
-
-  m.querySelector('#wt-box-close').onclick = () => m.remove();
-
-  m.addEventListener('click', e => {
-    if (e.target === m) m.remove();
-  });
-
-  return m;
+const state = {
+  theme: 'dark',
+  inspector: false,
+  panelOpen: false,
+  modalOpen: false,
+  tools: [],
+  inspectorCleanup: null
 };
 
-const setModalStatus = (m, status, progress) => {
-  if (!m) return;
+const root = document.createElement('div');
+root.id = APP_ID;
 
-  const statusEl = m.querySelector('[data-wt-status]');
-  const bar = m.querySelector('[data-wt-progress]');
+window.__WEBTOOLS_PRO__ = {
+  remove() {
+    try {
+      state.inspectorCleanup?.();
+    } catch {}
 
-  if (statusEl) statusEl.textContent = status;
-  if (bar && typeof progress === 'number') {
-    bar.style.width = Math.max(0, Math.min(100, progress)) + '%';
+    document.getElementById(APP_ID)?.remove();
+    document.getElementById(STYLE_ID)?.remove();
+    document.getElementById('wt-pro-modal')?.remove();
+    document.getElementById('wt-pro-toast-container')?.remove();
   }
 };
 
-const copy = async text => {
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+const esc = value =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const escAttr = esc;
+
+const sleep = ms =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
+const isElement = node =>
+  node && node.nodeType === Node.ELEMENT_NODE;
+
+const safeJSON = value => {
   try {
-    await navigator.clipboard.writeText(text);
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const formatBytes = bytes => {
+  if (!Number.isFinite(bytes)) return 'Unknown';
+
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
+
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+};
+
+const formatNumber = n =>
+  Number(n || 0).toLocaleString();
+
+const truncate = (value, length = 300) => {
+  const text = String(value ?? '');
+  return text.length > length
+    ? text.slice(0, length) + '…'
+    : text;
+};
+
+const absoluteURL = value => {
+  try {
+    return new URL(value, location.href).href;
+  } catch {
+    return '';
+  }
+};
+
+const isSameOrigin = value => {
+  try {
+    return new URL(value, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+};
+
+const copyText = async text => {
+  try {
+    await navigator.clipboard.writeText(String(text ?? ''));
     return true;
   } catch {
     try {
       const ta = document.createElement('textarea');
-      ta.value = text;
+
+      ta.value = String(text ?? '');
       ta.style.position = 'fixed';
-      ta.style.opacity = '0';
+      ta.style.left = '-9999px';
+
       document.body.appendChild(ta);
+
+      ta.focus();
       ta.select();
-      const ok = document.execCommand('copy');
+
+      const result = document.execCommand('copy');
+
       ta.remove();
-      return ok;
+
+      return result;
     } catch {
       return false;
     }
   }
 };
 
-const urlHTML = url => {
-  const safe = esc(url);
-  return `<a class="wt-url" href="${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+
+  document.body.appendChild(a);
+
+  a.click();
+
+  a.remove();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 30000);
 };
 
-const hostnameOf = url => {
-  try { return new URL(url, location.href).hostname; } catch { return ''; }
+const safeFilename = name =>
+  String(name || 'file')
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160) || 'file';
+
+/* =========================================================
+   ICON SYSTEM
+   ========================================================= */
+
+const icon = (paths, size = 18) => `
+<svg
+  width="${size}"
+  height="${size}"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+${paths}
+</svg>`;
+
+const ICONS = {
+
+  brand: `
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>
+  `,
+
+  dashboard: `
+    <rect x="3" y="3" width="7" height="7"/>
+    <rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/>
+    <rect x="14" y="14" width="7" height="7"/>
+  `,
+
+  search: `
+    <circle cx="11" cy="11" r="7"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  `,
+
+  close: `
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  `,
+
+  download: `
+    <path d="M12 3v12"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <path d="M5 21h14"/>
+  `,
+
+  pdf: `
+    <path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <path d="M8 15h2a2 2 0 0 0 0-4H8v7"/>
+    <path d="M13 11v7h1a3.5 3.5 0 0 0 0-7z"/>
+  `,
+
+  links: `
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  `,
+
+  images: `
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  `,
+
+  forms: `
+    <rect x="4" y="3" width="16" height="18" rx="2"/>
+    <line x1="8" y1="8" x2="16" y2="8"/>
+    <line x1="8" y1="12" x2="16" y2="12"/>
+    <line x1="8" y1="16" x2="13" y2="16"/>
+  `,
+
+  headings: `
+    <polyline points="4 7 4 4 20 4 20 7"/>
+    <line x1="9" y1="20" x2="15" y2="20"/>
+    <line x1="12" y1="4" x2="12" y2="20"/>
+  `,
+
+  inspector: `
+    <circle cx="12" cy="12" r="8"/>
+    <line x1="12" y1="2" x2="12" y2="5"/>
+    <line x1="12" y1="19" x2="12" y2="22"/>
+    <line x1="2" y1="12" x2="5" y2="12"/>
+    <line x1="19" y1="12" x2="22" y2="12"/>
+  `,
+
+  storage: `
+    <ellipse cx="12" cy="5" rx="8" ry="3"/>
+    <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/>
+    <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>
+  `,
+
+  session: `
+    <path d="M22 18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+  `,
+
+  performance: `
+    <polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/>
+  `,
+
+  resources: `
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+    <line x1="12" y1="22.08" x2="12" y2="12"/>
+  `,
+
+  cookies: `
+    <path d="M12 22s7-3.5 7-9V6l-7-3-7 3v7c0 5.5 7 9 7 9z"/>
+  `,
+
+  source: `
+    <polyline points="16 18 22 12 16 6"/>
+    <polyline points="8 6 2 12 8 18"/>
+  `,
+
+  code: `
+    <polyline points="8 9 4 12 8 15"/>
+    <polyline points="16 9 20 12 16 15"/>
+    <line x1="14" y1="5" x2="10" y2="19"/>
+  `,
+
+  seo: `
+    <circle cx="11" cy="11" r="7"/>
+    <line x1="20" y1="20" x2="16" y2="16"/>
+    <path d="M8 11h6"/>
+  `,
+
+  accessibility: `
+    <circle cx="12" cy="5" r="2"/>
+    <path d="M5 9h14"/>
+    <path d="M12 9v11"/>
+    <path d="M8 20l4-5 4 5"/>
+  `,
+
+  copy: `
+    <rect x="9" y="9" width="12" height="12" rx="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  `,
+
+  text: `
+    <path d="M4 6V4h16v2"/>
+    <line x1="12" y1="4" x2="12" y2="20"/>
+    <line x1="8" y1="20" x2="16" y2="20"/>
+  `,
+
+  theme: `
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2"/>
+    <path d="M12 20v2"/>
+    <path d="M4.93 4.93l1.41 1.41"/>
+    <path d="M17.66 17.66l1.41 1.41"/>
+    <path d="M2 12h2"/>
+    <path d="M20 12h2"/>
+    <path d="M4.93 19.07l1.41-1.41"/>
+    <path d="M17.66 6.34l1.41-1.41"/>
+  `,
+
+  chart: `
+    <line x1="4" y1="20" x2="4" y2="10"/>
+    <line x1="10" y1="20" x2="10" y2="4"/>
+    <line x1="16" y1="20" x2="16" y2="13"/>
+    <line x1="22" y1="20" x2="22" y2="7"/>
+  `
 };
 
-const addTool = (iconKey, title, description, fn) => {
-  const b = document.createElement('button');
-  b.className = 'wt-tool';
-  b.dataset.search = (title + ' ' + description).toLowerCase();
-  b.innerHTML = `
-    <div class="wt-tool-ico">${ic(ICONS[iconKey], 17)}</div>
-    <div class="wt-tool-body">
-      <div class="wt-tool-title">${esc(title)}</div>
-      <div class="wt-tool-desc">${esc(description)}</div>
-    </div>
-  `;
-  b.onclick = fn;
-  tools.appendChild(b);
-};
+/* =========================================================
+   CSS
+   ========================================================= */
 
-const card = (label, value, copyValue) => {
-  return `
-    <div class="wt-card">
-      <div class="wt-label">${esc(label)}</div>
-      <div class="wt-value">
-        ${copyValue !== undefined
-          ? `<button class="wt-copy" data-copy="${esc(copyValue)}">Copy</button>`
-          : ''}
-        ${value}
+const css = `
+#${APP_ID},
+#wt-pro-modal,
+#wt-pro-toast-container {
+  --wt-bg: #0e1014;
+  --wt-bg2: #15181e;
+  --wt-bg3: #1b1f27;
+  --wt-border: #282e38;
+  --wt-border-soft: #20252e;
+  --wt-text: #f1f4f8;
+  --wt-muted: #8d96a5;
+  --wt-accent: #7c9df5;
+  --wt-accent-soft: #7c9df51c;
+  --wt-green: #6fd69b;
+  --wt-yellow: #e8bc62;
+  --wt-red: #f27676;
+  --wt-radius: 15px;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    "Segoe UI",
+    sans-serif;
+}
+
+#${APP_ID} *,
+#wt-pro-modal *,
+#wt-pro-toast-container * {
+  box-sizing: border-box;
+}
+
+#${APP_ID} {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: ${Z};
+  color: var(--wt-text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#wt-pro-launch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ffffff16;
+  background: linear-gradient(145deg, #1d2129, #0a0c10);
+  color: white;
+  border-radius: 999px;
+  padding: 12px 17px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow:
+    0 12px 35px #000b,
+    inset 0 1px 0 #ffffff12;
+  transition: .16s ease;
+}
+
+#wt-pro-launch:hover {
+  transform: translateY(-1px);
+  border-color: #ffffff25;
+}
+
+#wt-pro-launch:active {
+  transform: scale(.97);
+}
+
+#wt-pro-panel {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  width: 410px;
+  max-width: calc(100vw - 30px);
+  max-height: 78vh;
+  overflow: hidden;
+  border: 1px solid var(--wt-border);
+  border-radius: 18px;
+  background: #101319f5;
+  backdrop-filter: blur(25px) saturate(150%);
+  -webkit-backdrop-filter: blur(25px) saturate(150%);
+  box-shadow: 0 30px 90px #000d;
+}
+
+#wt-pro-panel.open {
+  display: block;
+  animation: wtProPop .18s cubic-bezier(.2,.9,.3,1.2);
+}
+
+@keyframes wtProPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.wt-pro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--wt-border-soft);
+}
+
+.wt-pro-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.wt-pro-brand-icon {
+  color: var(--wt-accent);
+}
+
+.wt-pro-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.wt-pro-subtitle {
+  color: var(--wt-muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.wt-pro-head-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.wt-pro-icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--wt-border);
+  border-radius: 9px;
+  background: #ffffff08;
+  color: var(--wt-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.wt-pro-icon-btn:hover {
+  background: var(--wt-accent-soft);
+  color: var(--wt-text);
+}
+
+.wt-pro-search {
+  padding: 12px;
+  border-bottom: 1px solid var(--wt-border-soft);
+}
+
+.wt-pro-search-box {
+  position: relative;
+}
+
+.wt-pro-search-box svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--wt-muted);
+  pointer-events: none;
+}
+
+#wt-pro-search {
+  width: 100%;
+  border: 1px solid var(--wt-border);
+  outline: none;
+  background: #080a0e88;
+  color: var(--wt-text);
+  border-radius: 11px;
+  padding: 10px 12px 10px 34px;
+  font-size: 13px;
+}
+
+#wt-pro-search:focus {
+  border-color: var(--wt-accent);
+}
+
+.wt-pro-categories {
+  display: flex;
+  gap: 5px;
+  padding: 0 12px 9px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.wt-pro-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.wt-pro-category {
+  flex: 0 0 auto;
+  border: 1px solid var(--wt-border);
+  background: transparent;
+  color: var(--wt-muted);
+  border-radius: 999px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wt-pro-category.active {
+  color: var(--wt-accent);
+  background: var(--wt-accent-soft);
+  border-color: #7c9df540;
+}
+
+#wt-pro-tools {
+  overflow: auto;
+  max-height: 57vh;
+  padding: 0 10px 12px;
+}
+
+.wt-pro-section-title {
+  color: var(--wt-muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 10px 5px 5px;
+}
+
+.wt-pro-tool {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  color: var(--wt-text);
+  text-align: left;
+  cursor: pointer;
+  transition: .14s ease;
+}
+
+.wt-pro-tool:hover {
+  background: var(--wt-accent-soft);
+  border-color: #7c9df52d;
+}
+
+.wt-pro-tool:active {
+  transform: scale(.985);
+}
+
+.wt-pro-tool-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 9px;
+  background: #ffffff07;
+  color: var(--wt-muted);
+}
+
+.wt-pro-tool-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.wt-pro-tool-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.wt-pro-tool-desc {
+  margin-top: 2px;
+  color: var(--wt-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-pro-tool-arrow {
+  color: #596171;
+}
+
+.wt-pro-footer {
+  padding: 9px 13px;
+  border-top: 1px solid var(--wt-border-soft);
+  color: var(--wt-muted);
+  font-size: 9px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* modal */
+
+#wt-pro-modal {
+  position: fixed;
+  inset: 0;
+  z-index: ${Z};
+  background: #030508d9;
+  backdrop-filter: blur(11px);
+  -webkit-backdrop-filter: blur(11px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+#wt-pro-modal-box {
+  width: min(1000px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  border: 1px solid var(--wt-border);
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  background: #101319fa;
+  box-shadow: 0 -25px 90px #000e;
+  animation: wtProSlide .2s cubic-bezier(.2,.9,.3,1.1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes wtProSlide {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wt-pro-grip {
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: #ffffff25;
+  margin: 9px auto 0;
+}
+
+.wt-pro-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 17px;
+  border-bottom: 1px solid var(--wt-border-soft);
+}
+
+.wt-pro-modal-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.wt-pro-close {
+  border: 1px solid var(--wt-border);
+  border-radius: 9px;
+  padding: 7px 11px;
+  background: #ffffff08;
+  color: var(--wt-text);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#wt-pro-content {
+  overflow: auto;
+  max-height: calc(90vh - 65px);
+  padding: 15px 17px 25px;
+}
+
+.wt-card {
+  background: var(--wt-bg2);
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 13px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.wt-label {
+  color: var(--wt-muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 5px;
+}
+
+.wt-value {
+  color: var(--wt-text);
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.wt-muted {
+  color: var(--wt-muted);
+}
+
+.wt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wt-stat {
+  background: var(--wt-bg2);
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 13px;
+  padding: 13px;
+}
+
+.wt-stat-number {
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.wt-stat-label {
+  color: var(--wt-muted);
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.wt-url {
+  color: var(--wt-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.wt-url:hover {
+  text-decoration: underline;
+}
+
+.wt-copy {
+  float: right;
+  border: 1px solid var(--wt-border);
+  border-radius: 8px;
+  padding: 5px 9px;
+  background: #ffffff08;
+  color: var(--wt-text);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wt-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 99px;
+  border: 1px solid var(--wt-border);
+  background: #ffffff08;
+  color: var(--wt-muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+.wt-ok {
+  color: var(--wt-green);
+  border-color: #6fd69b40;
+  background: #6fd69b12;
+}
+
+.wt-warn {
+  color: var(--wt-yellow);
+  border-color: #e8bc6240;
+  background: #e8bc6212;
+}
+
+.wt-error {
+  color: var(--wt-red);
+  border-color: #f2767640;
+  background: #f2767612;
+}
+
+.wt-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 12px;
+}
+
+.wt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  min-width: 620px;
+}
+
+.wt-table th,
+.wt-table td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--wt-border-soft);
+}
+
+.wt-table th {
+  color: var(--wt-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.wt-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.wt-empty {
+  text-align: center;
+  color: var(--wt-muted);
+  padding: 35px 10px;
+  font-size: 12px;
+}
+
+.wt-code-wrap {
+  overflow: auto;
+  max-height: 68vh;
+  background: #080a0e;
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 12px;
+}
+
+.wt-code-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px;
+  background: #080a0eee;
+  border-bottom: 1px solid var(--wt-border-soft);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wt-code {
+  margin: 0;
+  padding: 14px;
+  color: #c9d1d9;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.wt-s-tag {
+  color: #ff7b72;
+}
+
+.wt-s-attr {
+  color: #d2a8ff;
+}
+
+.wt-s-string {
+  color: #a5d6ff;
+}
+
+.wt-s-punct {
+  color: #8b949e;
+}
+
+.wt-s-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.wt-progress {
+  height: 6px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: #ffffff09;
+  margin-top: 10px;
+}
+
+.wt-progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--wt-accent);
+  transition: width .18s ease;
+}
+
+.wt-status {
+  color: var(--wt-muted);
+  font-size: 10.5px;
+  margin-top: 8px;
+}
+
+.wt-tree {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--wt-text);
+}
+
+.wt-tree .dim {
+  color: var(--wt-muted);
+}
+
+.wt-tree .tag {
+  color: #ff7b72;
+}
+
+.wt-tree .attr {
+  color: #d2a8ff;
+}
+
+.wt-tree .value {
+  color: #a5d6ff;
+}
+
+.wt-preview {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #050608;
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+.wt-inspector-highlight {
+  outline: 3px solid #7c9df5 !important;
+  outline-offset: 3px !important;
+  cursor: crosshair !important;
+}
+
+.wt-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.wt-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--wt-text);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.wt-health {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--wt-border-soft);
+  border-radius: 11px;
+  margin-bottom: 7px;
+}
+
+.wt-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+#wt-pro-toast-container {
+  position: fixed;
+  right: 18px;
+  bottom: 82px;
+  z-index: ${Z + 2};
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.wt-toast {
+  background: #171a20f5;
+  border: 1px solid var(--wt-border);
+  color: var(--wt-text);
+  border-radius: 11px;
+  padding: 10px 12px;
+  box-shadow: 0 15px 40px #000b;
+  font-size: 11px;
+  animation: wtToastIn .18s ease;
+}
+
+@keyframes wtToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media(max-width:600px) {
+  #${APP_ID} {
+    right: 10px;
+  }
+
+  #wt-pro-panel {
+    right: 10px;
+    width: calc(100vw - 20px);
+    max-width: none;
+  }
+
+  #wt-pro-modal-box {
+    border-radius: 18px 18px 0 0;
+  }
+
+  .wt-two,
+  .wt-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  #${APP_ID},
+  #wt-pro-modal,
+  #wt-pro-toast-container {
+    display: none !important;
+  }
+}
+`;
+
+const style = document.createElement('style');
+style.id = STYLE_ID;
+style.textContent = css;
+
+document.head.appendChild(style);
+
+/* =========================================================
+   UI
+   ========================================================= */
+
+root.innerHTML = `
+<button
+  id="wt-pro-launch"
+  type="button"
+  aria-label="Open Web Tools Pro"
+  title="Web Tools Pro — Alt + Shift + W"
+>
+  ${icon(ICONS.brand, 16)}
+  <span>Web Tools Pro</span>
+</button>
+
+<div id="wt-pro-panel">
+
+  <div class="wt-pro-head">
+
+    <div class="wt-pro-brand">
+      <div class="wt-pro-brand-icon">
+        ${icon(ICONS.brand, 17)}
+      </div>
+
+      <div>
+        <div class="wt-pro-title">Web Tools Pro</div>
+        <div class="wt-pro-subtitle">
+          Advanced browser inspection toolkit
+        </div>
       </div>
     </div>
+
+    <div class="wt-pro-head-actions">
+
+      <button
+        class="wt-pro-icon-btn"
+        id="wt-pro-theme"
+        title="Toggle theme"
+        aria-label="Toggle theme"
+      >
+        ${icon(ICONS.theme, 15)}
+      </button>
+
+      <button
+        class="wt-pro-icon-btn"
+        id="wt-pro-close"
+        title="Close"
+        aria-label="Close"
+      >
+        ${icon(ICONS.close, 15)}
+      </button>
+
+    </div>
+
+  </div>
+
+  <div class="wt-pro-search">
+
+    <div class="wt-pro-search-box">
+      ${icon(ICONS.search, 15)}
+
+      <input
+        id="wt-pro-search"
+        type="search"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Search tools..."
+        aria-label="Search tools"
+      >
+    </div>
+
+  </div>
+
+  <div class="wt-pro-categories">
+
+    <button class="wt-pro-category active" data-category="all">
+      All
+    </button>
+
+    <button class="wt-pro-category" data-category="page">
+      Page
+    </button>
+
+    <button class="wt-pro-category" data-category="audit">
+      Audit
+    </button>
+
+    <button class="wt-pro-category" data-category="network">
+      Network
+    </button>
+
+    <button class="wt-pro-category" data-category="storage">
+      Storage
+    </button>
+
+    <button class="wt-pro-category" data-category="export">
+      Export
+    </button>
+
+  </div>
+
+  <div id="wt-pro-tools"></div>
+
+  <div class="wt-pro-footer">
+    <span>Alt + Shift + W</span>
+    <span>v2.0</span>
+  </div>
+
+</div>
+`;
+
+document.body.appendChild(root);
+
+const panel = root.querySelector('#wt-pro-panel');
+const toolsContainer = root.querySelector('#wt-pro-tools');
+const searchInput = root.querySelector('#wt-pro-search');
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+const toast = message => {
+
+  let container = document.getElementById(
+    'wt-pro-toast-container'
+  );
+
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'wt-pro-toast-container';
+    document.body.appendChild(container);
+  }
+
+  const item = document.createElement('div');
+
+  item.className = 'wt-toast';
+  item.textContent = message;
+
+  container.appendChild(item);
+
+  setTimeout(() => {
+    item.remove();
+  }, 2200);
+};
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+const closeModal = () => {
+  document.getElementById('wt-pro-modal')?.remove();
+  state.modalOpen = false;
+};
+
+const openModal = (title, html) => {
+
+  closeModal();
+
+  const modal = document.createElement('div');
+
+  modal.id = 'wt-pro-modal';
+
+  modal.innerHTML = `
+    <div id="wt-pro-modal-box">
+
+      <div class="wt-pro-grip"></div>
+
+      <div class="wt-pro-modal-head">
+
+        <div class="wt-pro-modal-title">
+          ${esc(title)}
+        </div>
+
+        <button
+          class="wt-pro-close"
+          type="button"
+          data-close-modal
+        >
+          Close
+        </button>
+
+      </div>
+
+      <div id="wt-pro-content">
+        ${html}
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  state.modalOpen = true;
+
+  modal.querySelector('[data-close-modal]')
+    .addEventListener('click', closeModal);
+
+  modal.addEventListener('click', event => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  bindCopyButtons(modal);
+
+  return modal;
+};
+
+const setModalHTML = html => {
+  const content = document.querySelector('#wt-pro-content');
+
+  if (content) {
+    content.innerHTML = html;
+    bindCopyButtons(document.getElementById('wt-pro-modal'));
+  }
+};
+
+/* =========================================================
+   CARD HELPERS
+   ========================================================= */
+
+const urlHTML = url => {
+  const value = String(url ?? '');
+
+  return `
+    <a
+      class="wt-url"
+      href="${escAttr(value)}"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      ${esc(value)}
+    </a>
   `;
 };
 
-const empty = text => `<div class="wt-empty">${esc(text)}</div>`;
+const card = (label, value, copyValue) => `
+  <div class="wt-card">
 
-const bindCopies = () => {
-  document.querySelectorAll('#wt-content .wt-copy').forEach(b => {
-    b.onclick = async () => {
-      const ok = await copy(b.dataset.copy);
-      b.textContent = ok ? 'Copied' : 'Failed';
-      setTimeout(() => b.textContent = 'Copy', 1200);
-    };
+    <div class="wt-label">
+      ${esc(label)}
+    </div>
+
+    <div class="wt-value">
+
+      ${
+        copyValue !== undefined
+          ? `
+            <button
+              class="wt-copy"
+              type="button"
+              data-copy="${escAttr(copyValue)}"
+            >
+              Copy
+            </button>
+          `
+          : ''
+      }
+
+      ${value}
+
+    </div>
+
+  </div>
+`;
+
+const stat = (number, label) => `
+  <div class="wt-stat">
+    <div class="wt-stat-number">
+      ${esc(number)}
+    </div>
+    <div class="wt-stat-label">
+      ${esc(label)}
+    </div>
+  </div>
+`;
+
+const empty = text =>
+  `<div class="wt-empty">${esc(text)}</div>`;
+
+const bindCopyButtons = container => {
+
+  if (!container) return;
+
+  container
+    .querySelectorAll('[data-copy]')
+    .forEach(button => {
+
+      button.addEventListener('click', async () => {
+
+        const ok = await copyText(
+          button.getAttribute('data-copy') || ''
+        );
+
+        const old = button.textContent;
+
+        button.textContent = ok
+          ? 'Copied'
+          : 'Failed';
+
+        if (ok) toast('Copied to clipboard');
+
+        setTimeout(() => {
+          button.textContent = old;
+        }, 1200);
+
+      });
+
+    });
+};
+
+/* =========================================================
+   TOOL REGISTRATION
+   ========================================================= */
+
+const addTool = ({
+  icon: iconName,
+  title,
+  description,
+  category,
+  keywords = '',
+  action
+}) => {
+
+  state.tools.push({
+    iconName,
+    title,
+    description,
+    category,
+    keywords: `${title} ${description} ${keywords}`.toLowerCase(),
+    action
   });
+
+};
+
+const renderTools = () => {
+
+  const query =
+    searchInput.value.trim().toLowerCase();
+
+  const activeCategory =
+    document.querySelector(
+      '.wt-pro-category.active'
+    )?.dataset.category || 'all';
+
+  const filtered = state.tools.filter(tool => {
+
+    const categoryMatch =
+      activeCategory === 'all' ||
+      tool.category === activeCategory;
+
+    const searchMatch =
+      !query ||
+      tool.keywords.includes(query);
+
+    return categoryMatch && searchMatch;
+  });
+
+  const groups = {};
+
+  filtered.forEach(tool => {
+
+    if (!groups[tool.category]) {
+      groups[tool.category] = [];
+    }
+
+    groups[tool.category].push(tool);
+  });
+
+  if (!filtered.length) {
+    toolsContainer.innerHTML =
+      empty('No matching tools.');
+    return;
+  }
+
+  toolsContainer.innerHTML = '';
+
+  const categoryOrder = [
+    'page',
+    'audit',
+    'network',
+    'storage',
+    'export'
+  ];
+
+  categoryOrder.forEach(category => {
+
+    if (!groups[category]?.length) {
+      return;
+    }
+
+    const heading = document.createElement('div');
+
+    heading.className =
+      'wt-pro-section-title';
+
+    heading.textContent =
+      category;
+
+    toolsContainer.appendChild(heading);
+
+    groups[category].forEach(tool => {
+
+      const button =
+        document.createElement('button');
+
+      button.type = 'button';
+      button.className = 'wt-pro-tool';
+
+      button.innerHTML = `
+        <div class="wt-pro-tool-icon">
+          ${icon(ICONS[tool.iconName] || ICONS.code, 17)}
+        </div>
+
+        <div class="wt-pro-tool-main">
+
+          <div class="wt-pro-tool-title">
+            ${esc(tool.title)}
+          </div>
+
+          <div class="wt-pro-tool-desc">
+            ${esc(tool.description)}
+          </div>
+
+        </div>
+
+        <div class="wt-pro-tool-arrow">
+          ›
+        </div>
+      `;
+
+      button.addEventListener(
+        'click',
+        () => {
+          try {
+            tool.action();
+          } catch (error) {
+            console.error(error);
+            toast('Tool failed to execute');
+          }
+        }
+      );
+
+      toolsContainer.appendChild(button);
+    });
+
+  });
+
+};
+
+/* =========================================================
+   HTML HIGHLIGHTER
+   ========================================================= */
+
+const highlightAttributes = input => {
+
+  let output = '';
+  let last = 0;
+
+  const regex =
+    /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?/g;
+
+  let match;
+
+  while ((match = regex.exec(input))) {
+
+    output += esc(
+      input.slice(last, match.index)
+    );
+
+    output += `
+      <span class="wt-s-attr">
+        ${esc(match[1])}
+      </span>
+    `;
+
+    if (match[3] !== undefined) {
+
+      output += `
+        <span class="wt-s-punct">=</span>
+        <span class="wt-s-string">
+          ${esc(match[3])}
+        </span>
+      `;
+    }
+
+    last = regex.lastIndex;
+  }
+
+  output += esc(input.slice(last));
+
+  return output;
+};
+
+const highlightTag = tag => {
+
+  const closing =
+    tag.startsWith('</');
+
+  const open =
+    closing ? '</' : '<';
+
+  const selfClosing =
+    tag.endsWith('/>');
+
+  const close =
+    selfClosing ? '/>' : '>';
+
+  const inner =
+    tag.slice(
+      open.length,
+      tag.length - close.length
+    );
+
+  const match =
+    inner.match(
+      /^[a-zA-Z][a-zA-Z0-9:-]*/
+    );
+
+  const name =
+    match?.[0] || '';
+
+  const attributes =
+    inner.slice(name.length);
+
+  return `
+    <span class="wt-s-punct">
+      ${esc(open)}
+    </span>
+
+    <span class="wt-s-tag">
+      ${esc(name)}
+    </span>
+
+    ${highlightAttributes(attributes)}
+
+    <span class="wt-s-punct">
+      ${esc(close)}
+    </span>
+  `;
+};
+
+const highlightHTML = html => {
+
+  const regex =
+    /<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*>/g;
+
+  let output = '';
+  let last = 0;
+
+  let match;
+
+  while ((match = regex.exec(html))) {
+
+    output += esc(
+      html.slice(last, match.index)
+    );
+
+    const token = match[0];
+
+    if (token.startsWith('<!--')) {
+
+      output += `
+        <span class="wt-s-comment">
+          ${esc(token)}
+        </span>
+      `;
+
+    } else {
+
+      output += highlightTag(token);
+    }
+
+    last = regex.lastIndex;
+  }
+
+  output += esc(html.slice(last));
+
+  return output;
 };
 
 /* =========================================================
    PAGE OVERVIEW
    ========================================================= */
 
-addTool(
-  'overview', 'Page Overview',
-  'Title, URL, domain and document statistics',
-  () => {
-    const rows = [
-      ['Title', esc(document.title)],
-      ['URL', urlHTML(location.href)],
-      ['Domain', esc(location.hostname)],
-      ['Protocol', esc(location.protocol)],
-      ['Path', esc(location.pathname)],
-      ['Referrer', esc(document.referrer || '(none)')]
-    ];
+addTool({
+  icon: 'dashboard',
+  title: 'Page Overview',
+  description: 'Complete page statistics and document information',
+  category: 'page',
+  keywords: 'title url domain protocol path viewport language charset',
+  action: () => {
 
-    modal(
+    const htmlSize =
+      new Blob([
+        document.documentElement.outerHTML
+      ]).size;
+
+    const viewport =
+      `${window.innerWidth} × ${window.innerHeight}`;
+
+    openModal(
       'Page Overview',
-      `<div class="wt-stat-grid">
-        <div class="wt-stat"><div class="wt-stat-num">${document.links.length}</div><div class="wt-stat-label">Links</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${document.images.length}</div><div class="wt-stat-label">Images</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${document.forms.length}</div><div class="wt-stat-label">Forms</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${document.scripts.length}</div><div class="wt-stat-label">Scripts</div></div>
+
+      `
+      <div class="wt-grid">
+
+        ${stat(document.links.length, 'Links')}
+        ${stat(document.images.length, 'Images')}
+        ${stat(document.forms.length, 'Forms')}
+        ${stat(document.scripts.length, 'Scripts')}
+        ${stat(document.querySelectorAll('*').length, 'DOM Elements')}
+        ${stat(formatBytes(htmlSize), 'HTML Size')}
+
       </div>
+
       <br>
-      ${rows.map(x => card(x[0], x[1], x[1])).join('')}`
-    );
 
-    bindCopies();
+      ${card('Title', esc(document.title || '(untitled)'))}
+
+      ${card(
+        'URL',
+        urlHTML(location.href),
+        location.href
+      )}
+
+      ${card(
+        'Domain',
+        esc(location.hostname)
+      )}
+
+      ${card(
+        'Protocol',
+        esc(location.protocol)
+      )}
+
+      ${card(
+        'Path',
+        esc(location.pathname)
+      )}
+
+      ${card(
+        'Language',
+        esc(document.documentElement.lang || '(not specified)')
+      )}
+
+      ${card(
+        'Charset',
+        esc(document.characterSet || '(unknown)')
+      )}
+
+      ${card(
+        'Viewport',
+        esc(viewport)
+      )}
+
+      ${card(
+        'Referrer',
+        esc(document.referrer || '(none)')
+      )}
+      `
+    );
   }
-);
+});
 
 /* =========================================================
-   SHARED SCRIPT/CSS LOADER
+   DASHBOARD
    ========================================================= */
 
-const loadScriptOnce = (src) => {
-  return new Promise((resolve, reject) => {
-    const existing = [...document.scripts].find(s => s.src === src);
-
-    if (existing) {
-      if (existing.dataset.wtLoaded) { resolve(); return; }
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Script failed to load.')), { once: true });
-      return;
-    }
-
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.onload = () => { s.dataset.wtLoaded = '1'; resolve(); };
-    s.onerror = () => reject(new Error('Script failed to load.'));
-    document.head.appendChild(s);
-  });
-};
-
-const loadStyleOnce = (href, id) => {
-  if (document.getElementById(id)) return;
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = href;
-  document.head.appendChild(link);
-};
-
-let hljsLoadPromise = null;
-
-const loadHLJS = () => {
-  if (window.hljs) return Promise.resolve(window.hljs);
-
-  if (hljsLoadPromise) return hljsLoadPromise;
-
-  hljsLoadPromise = (async () => {
-    loadStyleOnce(
-      'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css',
-      'wt-hljs-theme'
-    );
-
-    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js');
-
-    if (!window.hljs) throw new Error('Highlighter unavailable.');
-
-    if (!window.hljs.getLanguage('xml')) {
-      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js');
-    }
-
-    return window.hljs;
-  })();
-
-  return hljsLoadPromise;
-};
-
-/* =========================================================
-   FRONTEND ZIP EXPORT
-   ========================================================= */
-
-const crcTable = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-    table[n] = c >>> 0;
-  }
-  return table;
-})();
-
-const crc32 = data => {
-  let c = 0xffffffff;
-  for (let i = 0; i < data.length; i++) c = crcTable[(c ^ data[i]) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
-
-const u16 = n => { const a = new Uint8Array(2); new DataView(a.buffer).setUint16(0, n, true); return a; };
-const u32 = n => { const a = new Uint8Array(4); new DataView(a.buffer).setUint32(0, n >>> 0, true); return a; };
-
-const concatBytes = parts => {
-  let total = 0;
-  for (const p of parts) total += p.length;
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const p of parts) { out.set(p, offset); offset += p.length; }
-  return out;
-};
-
-const makeStoredZip = entries => {
-  const enc = new TextEncoder();
-  const local = [];
-  const central = [];
-  let offset = 0;
-
-  for (const entry of entries) {
-    const nameBytes = enc.encode(entry.name);
-    const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
-    const crc = crc32(data);
-
-    const localHeader = concatBytes([
-      u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
-      u32(crc), u32(data.length), u32(data.length),
-      u16(nameBytes.length), u16(0), nameBytes
-    ]);
-
-    local.push(localHeader, data);
-
-    const centralHeader = concatBytes([
-      u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
-      u32(crc), u32(data.length), u32(data.length),
-      u16(nameBytes.length), u16(0), u16(0), u16(0), u16(0),
-      u32(0), u32(offset), nameBytes
-    ]);
-
-    central.push(centralHeader);
-    offset += localHeader.length + data.length;
-  }
-
-  const centralBytes = concatBytes(central);
-  const localBytes = concatBytes(local);
-
-  const end = concatBytes([
-    u32(0x06054b50), u16(0), u16(0),
-    u16(entries.length), u16(entries.length),
-    u32(centralBytes.length), u32(localBytes.length), u16(0)
-  ]);
-
-  return new Blob([localBytes, centralBytes, end], { type: 'application/zip' });
-};
-
-const safeFileName = name => String(name || 'file')
-  .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .slice(0, 180) || 'file';
-
-const resourceName = (url, fallback = 'resource') => {
-  try {
-    const u = new URL(url, location.href);
-    let name = decodeURIComponent(u.pathname.split('/').pop() || fallback);
-    name = name.replace(/[?#].*$/, '');
-    if (!name || name === '.' || name === '..') name = fallback;
-    return safeFileName(name);
-  } catch { return safeFileName(fallback); }
-};
-
-const uniquePath = (path, used) => {
-  if (!used.has(path)) { used.add(path); return path; }
-  const dot = path.lastIndexOf('.');
-  const base = dot > 0 ? path.slice(0, dot) : path;
-  const ext = dot > 0 ? path.slice(dot) : '';
-  let i = 2;
-  while (used.has(`${base}-${i}${ext}`)) i++;
-  path = `${base}-${i}${ext}`;
-  used.add(path);
-  return path;
-};
-
-const isFetchableURL = url => {
-  try {
-    const u = new URL(url, location.href);
-    return /^https?:$/i.test(u.protocol);
-  } catch { return false; }
-};
-
-const fetchResource = async (url, timeout = 12000) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'default', signal: controller.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    if (response.type === 'opaque') throw new Error('Opaque response');
-
-    return {
-      url: response.url || url,
-      contentType: response.headers.get('content-type') || '',
-      buffer: await response.arrayBuffer()
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-const collectFrontendResources = () => {
-  const list = [];
-  const seen = new Set();
-
-  const add = (url, type) => {
-    if (!url) return;
-    try {
-      const u = new URL(url, location.href);
-      if (!/^https?:$/i.test(u.protocol)) return;
-      const key = u.href;
-      if (seen.has(key)) return;
-      seen.add(key);
-      list.push({ url: key, type });
-    } catch {}
-  };
-
-  document.querySelectorAll('link[href]').forEach(el => {
-    const rel = (el.getAttribute('rel') || '').toLowerCase();
-    if (rel.includes('stylesheet') || rel.includes('icon') || rel.includes('manifest') || rel.includes('preload') || rel.includes('modulepreload')) {
-      add(el.href, rel.includes('stylesheet') ? 'css' : 'asset');
-    }
-  });
-
-  document.querySelectorAll('script[src]').forEach(el => add(el.src, 'js'));
-  document.querySelectorAll('img[src],source[src],video[src],audio[src],iframe[src]').forEach(el => add(el.src, 'asset'));
-
-  document.querySelectorAll('[srcset]').forEach(el => {
-    (el.getAttribute('srcset') || '').split(',').forEach(part => {
-      const candidate = part.trim().split(/\s+/)[0];
-      if (candidate) add(candidate, 'asset');
-    });
-  });
-
-  document.querySelectorAll('[poster]').forEach(el => add(el.getAttribute('poster'), 'asset'));
-
-  document.querySelectorAll('link[href]').forEach(el => {
-    const href = el.href;
-    if (href && /\.(woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|avif|ico|mp4|webm|mp3|wav)(\?|#|$)/i.test(href.toLowerCase())) {
-      add(href, 'asset');
-    }
-  });
-
-  try {
-    performance.getEntriesByType('resource').forEach(entry => {
-      if (!entry || !entry.name) return;
-      const type = entry.initiatorType === 'script' ? 'js' : entry.initiatorType === 'css' ? 'css' : 'asset';
-      add(entry.name, type);
-    });
-  } catch {}
-
-  return list;
-};
-
-const sanitizeExportDocument = () => {
-  const clone = document.documentElement.cloneNode(true);
-  clone.querySelectorAll('#wt-app,#wt-modal,#wt-style,#wt-hljs-theme').forEach(el => el.remove());
-
-  clone.querySelectorAll('input,textarea,select').forEach(el => {
-    try {
-      if (el.tagName === 'INPUT') {
-        const type = (el.getAttribute('type') || '').toLowerCase();
-        if (type === 'checkbox' || type === 'radio') el.removeAttribute('checked');
-        else el.removeAttribute('value');
-      } else if (el.tagName === 'TEXTAREA') {
-        el.textContent = '';
-      } else if (el.tagName === 'SELECT') {
-        el.querySelectorAll('option').forEach(o => o.removeAttribute('selected'));
-      }
-    } catch {}
-  });
-
-  return clone;
-};
-
-const pathForResource = (resource, used) => {
-  const name = resourceName(resource.url, 'resource');
-  let folder = 'assets';
-  if (resource.type === 'css') folder = 'css';
-  if (resource.type === 'js') folder = 'js';
-  return uniquePath(`${folder}/${name}`, used);
-};
-
-const rewriteHTMLResourceReferences = (doc, mapping) => {
-  const rewrite = url => {
-    try {
-      const absolute = new URL(url, location.href).href;
-      return mapping.get(absolute) || url;
-    } catch { return url; }
-  };
-
-  doc.querySelectorAll('link[href]').forEach(el => {
-    const o = el.getAttribute('href'); if (!o) return;
-    const r = rewrite(o); if (r !== o) el.setAttribute('href', r);
-  });
-
-  doc.querySelectorAll('script[src]').forEach(el => {
-    const o = el.getAttribute('src'); if (!o) return;
-    const r = rewrite(o); if (r !== o) el.setAttribute('src', r);
-  });
-
-  doc.querySelectorAll('img[src],source[src],video[src],audio[src],iframe[src]').forEach(el => {
-    const o = el.getAttribute('src'); if (!o) return;
-    const r = rewrite(o); if (r !== o) el.setAttribute('src', r);
-  });
-
-  doc.querySelectorAll('[poster]').forEach(el => {
-    const o = el.getAttribute('poster'); if (!o) return;
-    const r = rewrite(o); if (r !== o) el.setAttribute('poster', r);
-  });
-
-  doc.querySelectorAll('[srcset]').forEach(el => {
-    const o = el.getAttribute('srcset') || '';
-    const r = o.split(',').map(part => {
-      const bits = part.trim().split(/\s+/);
-      if (!bits[0]) return part;
-      bits[0] = rewrite(bits[0]);
-      return bits.join(' ');
-    }).join(', ');
-    el.setAttribute('srcset', r);
-  });
-};
-
-const rewriteCSSReferences = (cssText, cssURL, mapping) => cssText.replace(
-  /url\(\s*(['"]?)([^'")]+)\1\s*\)/gi,
-  (full, quote, value) => {
-    const raw = value.trim();
-    if (!raw || raw.startsWith('data:') || raw.startsWith('#') || raw.startsWith('blob:')) return full;
-    try {
-      const absolute = new URL(raw, cssURL).href;
-      const mapped = mapping.get(absolute);
-      if (mapped) return `url("${mapped}")`;
-    } catch {}
-    return full;
-  }
-);
-
-const makeTextBytes = text => new TextEncoder().encode(text);
-
-const downloadBlob = (blob, name) => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.rel = 'noopener';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-};
-
-let jsZipLoadPromise = null;
-
-const loadJSZip = () => {
-  if (window.JSZip) return Promise.resolve(window.JSZip);
-  if (jsZipLoadPromise) return jsZipLoadPromise;
-  jsZipLoadPromise = loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js')
-    .then(() => window.JSZip);
-  return jsZipLoadPromise;
-};
-
-const createZipWithJSZip = async (JSZip, entries) => {
-  const zip = new JSZip();
-  for (const entry of entries) zip.file(entry.name, entry.data);
-  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-};
-
-const exportFrontendZIP = async () => {
-  const filename = `${safeFileName(location.hostname || 'page')}-frontend.zip`;
-
-  const progressModal = modal(
-    'Download Frontend ZIP',
-    `<div class="wt-card">
-      <div class="wt-label">Status</div>
-      <div class="wt-value" data-wt-status>Preparing frontend...</div>
-      <div class="wt-progress"><div class="wt-progress-bar" data-wt-progress></div></div>
-      <div class="wt-status">The export contains the currently loaded frontend and browser-accessible resources.</div>
-    </div>`
-  );
-
-  let skipped = 0;
-  let completed = 0;
-
-  try {
-    const used = new Set();
-    const mapping = new Map();
-    const resourceResults = [];
-
-    setModalStatus(progressModal, 'Preparing frontend...', 5);
-
-    const exportDocument = sanitizeExportDocument();
-
-    setModalStatus(progressModal, 'Collecting resources...', 12);
-
-    const resources = collectFrontendResources();
-
-    for (const resource of resources) {
-      try {
-        if (!isFetchableURL(resource.url)) { skipped++; continue; }
-        const resourceURL = new URL(resource.url);
-        if (resourceURL.origin !== location.origin) { skipped++; continue; }
-        const path = pathForResource(resource, used);
-        resourceResults.push({ resource, path });
-        mapping.set(resourceURL.href, path);
-      } catch { skipped++; }
-    }
-
-    const entries = [];
-
-    for (const item of resourceResults) {
-      const resource = item.resource;
-      try {
-        const fetched = await fetchResource(resource.url);
-        let data = new Uint8Array(fetched.buffer);
-
-        if (resource.type === 'css') {
-          const text = new TextDecoder().decode(data);
-          data = makeTextBytes(rewriteCSSReferences(text, resource.url, mapping));
-        }
-
-        entries.push({ name: item.path, data });
-      } catch { skipped++; }
-
-      completed++;
-      const progress = 15 + Math.round((completed / Math.max(resourceResults.length, 1)) * 55);
-      setModalStatus(progressModal, `Collecting resources... ${completed}/${resourceResults.length}`, progress);
-    }
-
-    setModalStatus(progressModal, 'Building ZIP...', 75);
-
-    rewriteHTMLResourceReferences(exportDocument, mapping);
-
-    const html = '<!DOCTYPE html>\n' + exportDocument.outerHTML;
-    entries.unshift({ name: 'index.html', data: makeTextBytes(html) });
-
-    let zipBlob;
-
-    try {
-      let JSZip = window.JSZip;
-      if (!JSZip) { try { JSZip = await loadJSZip(); } catch { JSZip = null; } }
-      zipBlob = JSZip ? await createZipWithJSZip(JSZip, entries) : makeStoredZip(entries);
-    } catch {
-      zipBlob = makeStoredZip(entries);
-    }
-
-    setModalStatus(progressModal, 'Downloading...', 95);
-    downloadBlob(zipBlob, filename);
-
-    setModalStatus(
-      progressModal,
-      skipped ? `Export completed with ${skipped} inaccessible resources skipped.` : 'Export completed successfully.',
-      100
-    );
-
-    const content = progressModal.querySelector('#wt-content');
-    if (content) {
-      content.insertAdjacentHTML('beforeend', `
-        <div class="wt-card"><div class="wt-label">Exported</div><div class="wt-value">${esc(filename)}</div></div>
-        <div class="wt-card"><div class="wt-label">Privacy</div><div class="wt-note">Cookies, localStorage, sessionStorage, authorization headers, browser credentials and live form values were not included. Backend/server-side source is not accessible through this export.</div></div>
-      `);
-    }
-  } catch (e) {
-    const message = e && e.message ? e.message : 'The frontend export could not be completed.';
-    const content = progressModal.querySelector('#wt-content');
-    if (content) {
-      content.innerHTML = `
-        <div class="wt-card"><div class="wt-label">Export failed</div><div class="wt-value">${esc(message)}</div></div>
-        <div class="wt-card"><div class="wt-note">The page itself was not modified. Browser security restrictions can prevent individual resources from being retrieved.</div></div>
-      `;
-    }
-  }
-};
-
-addTool(
-  'download', 'Download Frontend ZIP',
-  'Export the loaded frontend HTML, CSS, JS and accessible assets',
-  () => exportFrontendZIP()
-);
-
-/* =========================================================
-   PAGE PDF
-   ========================================================= */
-
-const downloadPagePDF = () => {
-  const printStyle = document.createElement('style');
-  printStyle.id = 'wt-print-temp';
-  printStyle.textContent = `
-    @media print{
-      #wt-app,#wt-modal,#wt-style,[data-wt-print-hide]{display:none!important}
-      html,body{background:#fff!important}
-    }
-  `;
-
-  let restored = false;
-  const cleanup = () => {
-    if (restored) return;
-    restored = true;
-    try { printStyle.remove(); } catch {}
-    try { window.removeEventListener('afterprint', cleanup); } catch {}
-  };
-
-  try {
-    document.head.appendChild(printStyle);
-    root.style.display = 'none';
-    const currentModal = document.getElementById('wt-modal');
-    if (currentModal) currentModal.style.display = 'none';
-
-    window.addEventListener('afterprint', cleanup, { once: true });
-    window.print();
-    setTimeout(cleanup, 60000);
-  } catch {
-    cleanup();
-    root.style.display = '';
-    const currentModal = document.getElementById('wt-modal');
-    if (currentModal) currentModal.style.display = '';
-
-    modal(
-      'Download Page as PDF',
-      `<div class="wt-card"><div class="wt-label">Print unavailable</div><div class="wt-value">This browser did not allow the print-to-PDF flow to start.</div></div>`
+addTool({
+  icon: 'chart',
+  title: 'Live Dashboard',
+  description: 'Quick health overview of the current page',
+  category: 'page',
+  keywords: 'dashboard health summary metrics',
+  action: () => {
+
+    const images =
+      [...document.images];
+
+    const missingAlt =
+      images.filter(
+        img =>
+          !img.hasAttribute('alt') ||
+          !img.getAttribute('alt')?.trim()
+      ).length;
+
+    const links =
+      [...document.links];
+
+    const externalLinks =
+      links.filter(
+        a => !isSameOrigin(a.href)
+      ).length;
+
+    const headings =
+      [...document.querySelectorAll(
+        'h1,h2,h3,h4,h5,h6'
+      )];
+
+    const h1Count =
+      document.querySelectorAll('h1').length;
+
+    const forms =
+      [...document.forms];
+
+    const requiredFields =
+      forms.reduce(
+        (sum, form) =>
+          sum +
+          [...form.elements]
+            .filter(el => el.required)
+            .length,
+        0
+      );
+
+    const resourceCount =
+      performance.getEntriesByType('resource').length;
+
+    openModal(
+      'Live Dashboard',
+
+      `
+      <div class="wt-grid">
+
+        ${stat(
+          document.querySelectorAll('*').length,
+          'DOM Nodes'
+        )}
+
+        ${stat(
+          document.links.length,
+          'Links'
+        )}
+
+        ${stat(
+          images.length,
+          'Images'
+        )}
+
+        ${stat(
+          headings.length,
+          'Headings'
+        )}
+
+        ${stat(
+          resourceCount,
+          'Resources'
+        )}
+
+        ${stat(
+          document.scripts.length,
+          'Scripts'
+        )}
+
+      </div>
+
+      <br>
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Page Health
+        </div>
+
+        <div class="wt-health ${
+          h1Count === 1
+            ? 'wt-ok'
+            : 'wt-warn'
+        }">
+
+          <span class="wt-health-dot"></span>
+
+          <span>
+            H1 count:
+            <strong>${h1Count}</strong>
+          </span>
+
+        </div>
+
+        <div class="wt-health ${
+          missingAlt === 0
+            ? 'wt-ok'
+            : 'wt-warn'
+        }">
+
+          <span class="wt-health-dot"></span>
+
+          <span>
+            Missing image alt:
+            <strong>${missingAlt}</strong>
+          </span>
+
+        </div>
+
+        <div class="wt-health ${
+          externalLinks === 0
+            ? 'wt-ok'
+            : 'wt-warn'
+        }">
+
+          <span class="wt-health-dot"></span>
+
+          <span>
+            External links:
+            <strong>${externalLinks}</strong>
+          </span>
+
+        </div>
+
+        <div class="wt-health wt-ok">
+
+          <span class="wt-health-dot"></span>
+
+          <span>
+            Required form fields:
+            <strong>${requiredFields}</strong>
+          </span>
+
+        </div>
+
+      </div>
+      `
     );
   }
-};
-
-addTool(
-  'pdf', 'Download Page as PDF',
-  'Save the current rendered page as a PDF',
-  () => downloadPagePDF()
-);
+});
 
 /* =========================================================
    DOM INSPECTOR
    ========================================================= */
 
-addTool(
-  'inspector', 'DOM Inspector',
-  'Tap an element to inspect basic DOM information',
-  () => {
-    let active = true;
+const stopInspector = () => {
 
-    const oldStyle = document.getElementById('wt-inspector-style');
-    if (oldStyle) oldStyle.remove();
+  state.inspector = false;
 
-    const st = document.createElement('style');
-    st.id = 'wt-inspector-style';
-    st.textContent = '[data-wt-highlight]{outline:3px solid #6f93f2!important;outline-offset:2px!important;cursor:crosshair!important}';
-    document.head.appendChild(st);
+  try {
+    state.inspectorCleanup?.();
+  } catch {}
 
-    const over = e => {
-      if (!active || root.contains(e.target) || e.target.closest('#wt-modal')) return;
-      try { e.target.setAttribute('data-wt-highlight', ''); } catch {}
-    };
+  state.inspectorCleanup = null;
 
-    const out = e => { try { e.target.removeAttribute('data-wt-highlight'); } catch {} };
+  document
+    .querySelectorAll('.wt-inspector-highlight')
+    .forEach(el =>
+      el.classList.remove(
+        'wt-inspector-highlight'
+      )
+    );
+};
 
-    const click = e => {
-      if (!active || root.contains(e.target) || e.target.closest('#wt-modal')) return;
-      e.preventDefault();
-      e.stopPropagation();
+const startInspector = () => {
 
-      const el = e.target;
+  stopInspector();
 
-      modal(
-        'Element',
-        card('Tag', esc(el.tagName)) +
-        card('ID', esc(el.id || '(none)')) +
-        card('Classes', esc(typeof el.className === 'string' ? el.className : '(none)')) +
-        card('Text', esc((el.innerText || '').trim().slice(0, 2000)))
+  state.inspector = true;
+
+  let lastElement = null;
+
+  const mouseOver = event => {
+
+    const element = event.target;
+
+    if (
+      !isElement(element) ||
+      root.contains(element) ||
+      element.closest('#wt-pro-modal')
+    ) {
+      return;
+    }
+
+    if (lastElement) {
+      lastElement.classList.remove(
+        'wt-inspector-highlight'
       );
+    }
 
-      bindCopies();
-    };
+    lastElement = element;
 
-    document.addEventListener('mouseover', over, true);
-    document.addEventListener('mouseout', out, true);
-    document.addEventListener('click', click, true);
+    element.classList.add(
+      'wt-inspector-highlight'
+    );
+  };
 
-    alert('Inspector enabled for 30 seconds. Tap an element.');
+  const mouseOut = event => {
 
-    setTimeout(() => {
-      active = false;
-      document.removeEventListener('mouseover', over, true);
-      document.removeEventListener('mouseout', out, true);
-      document.removeEventListener('click', click, true);
-      try { document.querySelectorAll('[data-wt-highlight]').forEach(el => el.removeAttribute('data-wt-highlight')); } catch {}
-      st.remove();
-    }, 30000);
-  }
-);
+    if (
+      isElement(event.target)
+    ) {
+      event.target.classList.remove(
+        'wt-inspector-highlight'
+      );
+    }
+  };
 
-/* =========================================================
-   PAGE SOURCE — sticky copy bar + syntax highlighting
-   ========================================================= */
+  const click = event => {
 
-addTool(
-  'source', 'Page Source',
-  'Open the current document HTML in a color-highlighted viewer',
-  async () => {
-    const rawHTML = document.documentElement.outerHTML;
-    const byteLen = new Blob([rawHTML]).size;
-    const sizeLabel = byteLen > 1024 * 1024
-      ? (byteLen / (1024 * 1024)).toFixed(1) + ' MB'
-      : (byteLen / 1024).toFixed(1) + ' KB';
+    const element = event.target;
 
-    const m = modal(
-      'Document HTML',
-      `<div class="wt-source-bar">
-        <div class="wt-source-meta">${sizeLabel} · loading highlighter...</div>
-        <button class="wt-copy" data-copy="${esc(rawHTML)}">Copy HTML</button>
-      </div>
-      <div class="wt-code-wrap"><pre><code id="wt-source-code">${esc(rawHTML)}</code></pre></div>`
+    if (
+      !isElement(element) ||
+      root.contains(element) ||
+      element.closest('#wt-pro-modal')
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    inspectElement(element);
+
+    stopInspector();
+  };
+
+  document.addEventListener(
+    'mouseover',
+    mouseOver,
+    true
+  );
+
+  document.addEventListener(
+    'mouseout',
+    mouseOut,
+    true
+  );
+
+  document.addEventListener(
+    'click',
+    click,
+    true
+  );
+
+  state.inspectorCleanup = () => {
+
+    document.removeEventListener(
+      'mouseover',
+      mouseOver,
+      true
     );
 
-    const contentEl = m.querySelector('#wt-content');
-    if (contentEl) contentEl.classList.add('wt-source-content');
+    document.removeEventListener(
+      'mouseout',
+      mouseOut,
+      true
+    );
 
-    bindCopies();
+    document.removeEventListener(
+      'click',
+      click,
+      true
+    );
+  };
 
-    try {
-      const hljs = await loadHLJS();
-      const codeEl = m.querySelector('#wt-source-code');
-      const metaEl = m.querySelector('.wt-source-meta');
+  toast(
+    'Inspector enabled — click an element'
+  );
+};
 
-      if (codeEl && document.body.contains(codeEl)) {
-        const result = hljs.highlight(rawHTML, { language: 'xml' });
-        codeEl.innerHTML = result.value;
-        codeEl.classList.add('hljs', 'language-xml');
+const inspectElement = element => {
+
+  const rect =
+    element.getBoundingClientRect();
+
+  const styles =
+    getComputedStyle(element);
+
+  const attributes =
+    [...element.attributes];
+
+  const outerHTML =
+    element.outerHTML;
+
+  const classes =
+    typeof element.className === 'string'
+      ? element.className
+      : '';
+
+  openModal(
+    `Element — <${element.tagName.toLowerCase()}>`,
+
+    `
+    <div class="wt-grid">
+
+      ${stat(
+        Math.round(rect.width) + ' px',
+        'Width'
+      )}
+
+      ${stat(
+        Math.round(rect.height) + ' px',
+        'Height'
+      )}
+
+      ${stat(
+        element.children.length,
+        'Children'
+      )}
+
+      ${stat(
+        attributes.length,
+        'Attributes'
+      )}
+
+    </div>
+
+    <br>
+
+    ${card(
+      'Tag',
+      esc(element.tagName.toLowerCase())
+    )}
+
+    ${card(
+      'ID',
+      esc(element.id || '(none)')
+    )}
+
+    ${card(
+      'Classes',
+      esc(classes || '(none)')
+    )}
+
+    ${card(
+      'Text',
+      esc(
+        truncate(
+          element.innerText ||
+          element.textContent ||
+          '',
+          2500
+        )
+      )
+    )}
+
+    <div class="wt-card">
+
+      <div class="wt-label">
+        Attributes
+      </div>
+
+      ${
+        attributes.length
+          ? `
+          <div class="wt-table-wrap">
+            <table class="wt-table">
+              <tr>
+                <th>Name</th>
+                <th>Value</th>
+              </tr>
+
+              ${attributes.map(attr => `
+                <tr>
+                  <td>${esc(attr.name)}</td>
+                  <td>${esc(attr.value)}</td>
+                </tr>
+              `).join('')}
+
+            </table>
+          </div>
+          `
+          : empty('No attributes.')
       }
 
-      if (metaEl && document.body.contains(metaEl)) {
-        metaEl.textContent = `${sizeLabel} · ${rawHTML.split('\n').length} lines`;
-      }
-    } catch {
-      const metaEl = m.querySelector('.wt-source-meta');
-      if (metaEl && document.body.contains(metaEl)) {
-        metaEl.textContent = `${sizeLabel} · highlighting unavailable`;
-      }
-    }
-  }
-);
+    </div>
+
+    <div class="wt-card">
+
+      <div class="wt-label">
+        Computed Style
+      </div>
+
+      <div class="wt-table-wrap">
+
+        <table class="wt-table">
+
+          <tr>
+            <th>Property</th>
+            <th>Value</th>
+          </tr>
+
+          ${[
+            'display',
+            'position',
+            'width',
+            'height',
+            'margin',
+            'padding',
+            'font-family',
+            'font-size',
+            'font-weight',
+            'line-height',
+            'color',
+            'background-color',
+            'border',
+            'z-index',
+            'opacity'
+          ].map(property => `
+            <tr>
+              <td>${esc(property)}</td>
+              <td>${esc(styles.getPropertyValue(property))}</td>
+            </tr>
+          `).join('')}
+
+        </table>
+
+      </div>
+
+    </div>
+
+    <div class="wt-card">
+
+      <div class="wt-label">
+        Element HTML
+      </div>
+
+      <button
+        class="wt-copy"
+        data-copy="${escAttr(outerHTML)}"
+      >
+        Copy HTML
+      </button>
+
+      <div class="wt-code-wrap">
+        <pre class="wt-code">${highlightHTML(
+          outerHTML
+        )}</pre>
+      </div>
+
+    </div>
+    `
+  );
+};
 
 /* =========================================================
-   COPY PAGE TEXT
+   ACCESSIBILITY AUDIT
    ========================================================= */
 
-addTool(
-  'copy', 'Copy Page Text',
-  'Copy visible page text to clipboard',
-  async () => {
-    const ok = await copy(document.body.innerText || '');
-    alert(ok ? 'Visible page text copied.' : 'Clipboard permission denied.');
+addTool({
+  icon: 'accessibility',
+  title: 'Accessibility Audit',
+  description: 'Check common accessibility issues',
+  category: 'audit',
+  keywords: 'a11y aria alt labels buttons forms accessibility',
+  action: () => {
+
+    const issues = [];
+
+    const images =
+      [...document.images];
+
+    images.forEach((img, index) => {
+
+      if (!img.hasAttribute('alt')) {
+
+        issues.push({
+          type: 'error',
+          issue: `Image ${index + 1} has no alt attribute`,
+          element: img
+        });
+
+      }
+
+    });
+
+    const inputs =
+      [...document.querySelectorAll(
+        'input,textarea,select'
+      )];
+
+    inputs.forEach((input, index) => {
+
+      const id = input.id;
+
+      const hasLabel =
+        id &&
+        document.querySelector(
+          `label[for="${CSS.escape(id)}"]`
+        );
+
+      const aria =
+        input.getAttribute('aria-label') ||
+        input.getAttribute('aria-labelledby');
+
+      const placeholder =
+        input.getAttribute('placeholder');
+
+      if (
+        !hasLabel &&
+        !aria &&
+        !placeholder &&
+        input.type !== 'hidden'
+      ) {
+
+        issues.push({
+          type: 'warn',
+          issue:
+            `Form control ${index + 1} may have no accessible label`,
+          element: input
+        });
+
+      }
+
+    });
+
+    const buttons =
+      [...document.querySelectorAll(
+        'button,[role="button"]'
+      )];
+
+    buttons.forEach((button, index) => {
+
+      const text =
+        button.innerText?.trim();
+
+      const aria =
+        button.getAttribute('aria-label') ||
+        button.getAttribute('aria-labelledby');
+
+      if (!text && !aria) {
+
+        issues.push({
+          type: 'warn',
+          issue:
+            `Button ${index + 1} has no accessible name`,
+          element: button
+        });
+
+      }
+
+    });
+
+    const htmlLang =
+      document.documentElement.lang;
+
+    if (!htmlLang) {
+
+      issues.push({
+        type: 'warn',
+        issue: 'Document has no lang attribute'
+      });
+
+    }
+
+    const h1 =
+      document.querySelectorAll('h1').length;
+
+    if (h1 !== 1) {
+
+      issues.push({
+        type: 'warn',
+        issue:
+          `Expected one H1, found ${h1}`
+      });
+
+    }
+
+    const score =
+      Math.max(
+        0,
+        100 -
+        issues.filter(
+          x => x.type === 'error'
+        ).length * 12 -
+        issues.filter(
+          x => x.type === 'warn'
+        ).length * 5
+      );
+
+    openModal(
+      'Accessibility Audit',
+
+      `
+      <div class="wt-grid">
+
+        ${stat(score + '%', 'Approx. Health')}
+        ${stat(issues.length, 'Issues')}
+        ${stat(
+          issues.filter(
+            x => x.type === 'error'
+          ).length,
+          'Errors'
+        )}
+        ${stat(
+          issues.filter(
+            x => x.type === 'warn'
+          ).length,
+          'Warnings'
+        )}
+
+      </div>
+
+      <br>
+
+      ${
+        issues.length
+          ? issues.map(item => `
+            <div class="wt-health ${
+              item.type === 'error'
+                ? 'wt-error'
+                : 'wt-warn'
+            }">
+
+              <span class="wt-health-dot"></span>
+
+              <span>
+                ${esc(item.issue)}
+              </span>
+
+            </div>
+          `).join('')
+          : `
+            <div class="wt-health wt-ok">
+              <span class="wt-health-dot"></span>
+              <span>No common accessibility issues detected.</span>
+            </div>
+          `
+      }
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Note
+        </div>
+
+        <div class="wt-value">
+          This is a lightweight browser-side audit,
+          not a complete WCAG compliance test.
+        </div>
+
+      </div>
+      `
+    );
   }
-);
+});
+
+/* =========================================================
+   SEO AUDIT
+   ========================================================= */
+
+addTool({
+  icon: 'seo',
+  title: 'SEO Audit',
+  description: 'Analyze title, description, headings, canonical and robots',
+  category: 'audit',
+  keywords: 'seo search engine metadata canonical robots description',
+  action: () => {
+
+    const getMeta = name =>
+      document.querySelector(
+        `meta[name="${name}"]`
+      )?.content || '';
+
+    const title =
+      document.title.trim();
+
+    const description =
+      getMeta('description').trim();
+
+    const canonical =
+      document.querySelector(
+        'link[rel="canonical"]'
+      )?.href || '';
+
+    const robots =
+      getMeta('robots');
+
+    const viewport =
+      getMeta('viewport');
+
+    const h1 =
+      [...document.querySelectorAll('h1')];
+
+    const ogTitle =
+      document.querySelector(
+        'meta[property="og:title"]'
+      )?.content || '';
+
+    const ogDescription =
+      document.querySelector(
+        'meta[property="og:description"]'
+      )?.content || '';
+
+    const ogImage =
+      document.querySelector(
+        'meta[property="og:image"]'
+      )?.content || '';
+
+    const checks = [
+      [
+        !!title,
+        'Title present'
+      ],
+      [
+        !!description,
+        'Meta description present'
+      ],
+      [
+        h1.length === 1,
+        'Exactly one H1'
+      ],
+      [
+        !!canonical,
+        'Canonical URL present'
+      ],
+      [
+        !!viewport,
+        'Viewport meta present'
+      ],
+      [
+        !!ogTitle,
+        'Open Graph title present'
+      ],
+      [
+        !!ogDescription,
+        'Open Graph description present'
+      ],
+      [
+        !!ogImage,
+        'Open Graph image present'
+      ]
+    ];
+
+    const passed =
+      checks.filter(x => x[0]).length;
+
+    openModal(
+      'SEO Audit',
+
+      `
+      <div class="wt-grid">
+
+        ${stat(
+          `${passed}/${checks.length}`,
+          'Checks Passed'
+        )}
+
+        ${stat(
+          h1.length,
+          'H1 Count'
+        )}
+
+        ${stat(
+          title.length,
+          'Title Characters'
+        )}
+
+        ${stat(
+          description.length,
+          'Description Characters'
+        )}
+
+      </div>
+
+      <br>
+
+      ${checks.map(([ok, label]) => `
+        <div class="wt-health ${
+          ok ? 'wt-ok' : 'wt-warn'
+        }">
+
+          <span class="wt-health-dot"></span>
+
+          <span>
+            ${esc(label)}
+          </span>
+
+        </div>
+      `).join('')}
+
+      <br>
+
+      ${card(
+        'Title',
+        esc(title || '(missing)')
+      )}
+
+      ${card(
+        'Description',
+        esc(description || '(missing)')
+      )}
+
+      ${card(
+        'Canonical',
+        canonical
+          ? urlHTML(canonical)
+          : '<span class="wt-muted">(missing)</span>'
+      )}
+
+      ${card(
+        'Robots',
+        esc(robots || '(not specified)')
+      )}
+
+      ${card(
+        'Open Graph Title',
+        esc(ogTitle || '(missing)')
+      )}
+
+      ${card(
+        'Open Graph Description',
+        esc(ogDescription || '(missing)')
+      )}
+
+      ${card(
+        'Open Graph Image',
+        ogImage
+          ? urlHTML(ogImage)
+          : '<span class="wt-muted">(missing)</span>'
+      )}
+      `
+    );
+  }
+});
 
 /* =========================================================
    LINKS
    ========================================================= */
 
-addTool(
-  'links', 'Links',
-  'List all links with clickable destinations',
-  () => {
-    const data = [...document.links];
+addTool({
+  icon: 'links',
+  title: 'Links',
+  description: 'Inspect internal, external and security properties',
+  category: 'page',
+  keywords: 'href external internal target noopener noreferrer',
+  action: () => {
 
-    modal(
+    const links =
+      [...document.links];
+
+    openModal(
       'Links',
-      data.length
-      ? `<table class="wt-table">
-          <tr><th>#</th><th>Text</th><th>Domain</th><th>Destination</th></tr>
-          ${data.map((a, i) => `
+
+      links.length
+        ? `
+        <div class="wt-table-wrap">
+
+          <table class="wt-table">
+
             <tr>
-              <td>${i + 1}</td>
-              <td>${esc(a.innerText.trim() || '(no text)')}</td>
-              <td>${esc(hostnameOf(a.href) || '—')}</td>
-              <td>${urlHTML(a.href)}</td>
-            </tr>`).join('')}
-        </table>`
-      : empty('No links found.')
+              <th>#</th>
+              <th>Text</th>
+              <th>Destination</th>
+              <th>Type</th>
+              <th>Security</th>
+            </tr>
+
+            ${links.map((a, index) => {
+
+              const external =
+                !isSameOrigin(a.href);
+
+              const newTab =
+                a.target === '_blank';
+
+              const rel =
+                a.rel || '';
+
+              const unsafe =
+                newTab &&
+                !/\bnoopener\b/i.test(rel);
+
+              return `
+                <tr>
+
+                  <td>${index + 1}</td>
+
+                  <td>
+                    ${esc(
+                      truncate(
+                        a.innerText.trim() ||
+                        '(no text)',
+                        120
+                      )
+                    )}
+                  </td>
+
+                  <td>
+                    ${urlHTML(a.href)}
+                  </td>
+
+                  <td>
+
+                    <span class="wt-badge ${
+                      external
+                        ? 'wt-warn'
+                        : 'wt-ok'
+                    }">
+                      ${
+                        external
+                          ? 'External'
+                          : 'Internal'
+                      }
+                    </span>
+
+                    ${
+                      newTab
+                        ? `
+                          <span class="wt-badge">
+                            New tab
+                          </span>
+                        `
+                        : ''
+                    }
+
+                  </td>
+
+                  <td>
+
+                    ${
+                      unsafe
+                        ? `
+                          <span class="wt-badge wt-error">
+                            Missing noopener
+                          </span>
+                        `
+                        : `
+                          <span class="wt-badge wt-ok">
+                            OK
+                          </span>
+                        `
+                    }
+
+                  </td>
+
+                </tr>
+              `;
+
+            }).join('')}
+
+          </table>
+
+        </div>
+        `
+        : empty('No links found.')
     );
   }
-);
+});
 
 /* =========================================================
    IMAGES
    ========================================================= */
 
-addTool(
-  'images', 'Images',
-  'View images with clickable source URLs',
-  () => {
-    const data = [...document.images];
+addTool({
+  icon: 'images',
+  title: 'Images',
+  description: 'Inspect images, dimensions, alt text and loading',
+  category: 'page',
+  keywords: 'img image alt width height lazy loading',
+  action: () => {
 
-    modal(
+    const images =
+      [...document.images];
+
+    openModal(
       'Images',
-      data.length
-      ? data.map((img, i) => `
-        <div class="wt-card">
-          <div class="wt-label">Image ${i + 1}</div>
-          <div class="wt-value">${urlHTML(img.src)}</div>
-          <img class="wt-preview" src="${esc(img.src)}" loading="lazy">
-          <div class="wt-label" style="margin-top:8px">Dimensions</div>
-          <div class="wt-value">${img.naturalWidth || '?'} × ${img.naturalHeight || '?'}</div>
-        </div>
-      `).join('')
-      : empty('No images found.')
+
+      images.length
+        ? images.map((img, index) => {
+
+          const alt =
+            img.getAttribute('alt');
+
+          const status =
+            !img.complete
+              ? 'Loading'
+              : img.naturalWidth === 0
+                ? 'Failed'
+                : 'Loaded';
+
+          return `
+            <div class="wt-card">
+
+              <div class="wt-label">
+                Image ${index + 1}
+              </div>
+
+              <div class="wt-value">
+
+                ${
+                  alt !== null
+                    ? `
+                      <span class="wt-badge wt-ok">
+                        Alt present
+                      </span>
+                    `
+                    : `
+                      <span class="wt-badge wt-error">
+                        Missing alt
+                      </span>
+                    `
+                }
+
+                <span class="wt-badge">
+                  ${esc(status)}
+                </span>
+
+              </div>
+
+              <br>
+
+              ${urlHTML(img.currentSrc || img.src)}
+
+              ${
+                img.src
+                  ? `
+                    <img
+                      class="wt-preview"
+                      src="${escAttr(img.currentSrc || img.src)}"
+                      loading="lazy"
+                      alt=""
+                    >
+                  `
+                  : ''
+              }
+
+              ${card(
+                'Natural Dimensions',
+                `${img.naturalWidth || 0} × ${
+                  img.naturalHeight || 0
+                }`
+              )}
+
+              ${card(
+                'Rendered Dimensions',
+                `${Math.round(img.getBoundingClientRect().width)} × ${
+                  Math.round(img.getBoundingClientRect().height)
+                }`
+              )}
+
+              ${card(
+                'Alt Text',
+                esc(
+                  alt === null
+                    ? '(missing)'
+                    : alt || '(empty)'
+                )
+              )}
+
+            </div>
+          `;
+
+        }).join('')
+        : empty('No images found.')
     );
   }
-);
+});
 
 /* =========================================================
    FORMS
    ========================================================= */
 
-addTool(
-  'forms', 'Forms',
-  'Inspect forms, actions, methods and fields',
-  () => {
-    const data = [...document.forms];
+addTool({
+  icon: 'forms',
+  title: 'Forms',
+  description: 'Inspect actions, methods, controls and validation',
+  category: 'page',
+  keywords: 'form input select textarea required validation action method',
+  action: () => {
 
-    modal(
+    const forms =
+      [...document.forms];
+
+    openModal(
       'Forms',
-      data.length
-      ? data.map((f, i) => `
-        <div class="wt-card">
-          <div class="wt-label">Form ${i + 1}</div>
-          <div class="wt-value">
-            <strong>Action:</strong> ${urlHTML(f.action)}<br>
-            <strong>Method:</strong> ${esc((f.method || 'get').toUpperCase())}<br>
-            <strong>Fields:</strong> ${f.elements.length}
-          </div>
-          <br>
-          <table class="wt-table">
-            <tr><th>Name</th><th>Type</th><th>Tag</th></tr>
-            ${[...f.elements].map(e => `
-              <tr>
-                <td>${esc(e.name || '(none)')}</td>
-                <td>${esc(e.type || '(none)')}</td>
-                <td>${esc(e.tagName)}</td>
-              </tr>`).join('')}
-          </table>
-        </div>
-      `).join('')
-      : empty('No forms found.')
+
+      forms.length
+        ? forms.map((form, index) => {
+
+          const fields =
+            [...form.elements];
+
+          const required =
+            fields.filter(
+              field => field.required
+            ).length;
+
+          return `
+            <div class="wt-card">
+
+              <div class="wt-label">
+                Form ${index + 1}
+              </div>
+
+              ${card(
+                'Action',
+                urlHTML(form.action)
+              )}
+
+              ${card(
+                'Method',
+                esc(
+                  (
+                    form.method ||
+                    'get'
+                  ).toUpperCase()
+                )
+              )}
+
+              ${card(
+                'Fields',
+                `${fields.length}`
+              )}
+
+              ${card(
+                'Required',
+                `${required}`
+              )}
+
+              ${
+                fields.length
+                  ? `
+                    <div class="wt-table-wrap">
+
+                      <table class="wt-table">
+
+                        <tr>
+                          <th>Name</th>
+                          <th>Type</th>
+                          <th>Required</th>
+                        </tr>
+
+                        ${fields.map(field => `
+                          <tr>
+
+                            <td>
+                              ${esc(
+                                field.name ||
+                                field.id ||
+                                '(unnamed)'
+                              )}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                field.type ||
+                                field.tagName
+                              )}
+                            </td>
+
+                            <td>
+                              ${
+                                field.required
+                                  ? `
+                                    <span class="wt-badge wt-warn">
+                                      Required
+                                    </span>
+                                  `
+                                  : 'No'
+                              }
+                            </td>
+
+                          </tr>
+                        `).join('')}
+
+                      </table>
+
+                    </div>
+                  `
+                  : ''
+              )}
+
+            </div>
+          `;
+
+        }).join('')
+        : empty('No forms found.')
     );
   }
-);
+});
 
 /* =========================================================
    HEADINGS
    ========================================================= */
 
-addTool(
-  'headings', 'Headings',
-  'View document heading structure',
-  () => {
-    const data = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+addTool({
+  icon: 'headings',
+  title: 'Heading Structure',
+  description: 'Analyze H1-H6 hierarchy and heading text',
+  category: 'page',
+  keywords: 'h1 h2 h3 h4 h5 h6 outline hierarchy',
+  action: () => {
 
-    modal(
-      'Headings',
-      data.length
-      ? data.map((h, i) => `
-        <div class="wt-card">
-          <div class="wt-label">${h.tagName} — ${i + 1}</div>
-          <div class="wt-value">${esc(h.innerText.trim())}</div>
-        </div>
-      `).join('')
-      : empty('No headings found.')
+    const headings =
+      [...document.querySelectorAll(
+        'h1,h2,h3,h4,h5,h6'
+      )];
+
+    openModal(
+      'Heading Structure',
+
+      headings.length
+        ? headings.map((heading, index) => {
+
+          const level =
+            Number(
+              heading.tagName.substring(1)
+            );
+
+          return `
+            <div class="wt-card">
+
+              <div class="wt-label">
+                H${level} — ${index + 1}
+              </div>
+
+              <div class="wt-value">
+
+                <span class="wt-badge ${
+                  level === 1
+                    ? 'wt-ok'
+                    : ''
+                }">
+                  Level ${level}
+                </span>
+
+                ${esc(
+                  truncate(
+                    heading.innerText.trim(),
+                    500
+                  )
+                )}
+
+              </div>
+
+            </div>
+          `;
+
+        }).join('')
+        : empty('No headings found.')
     );
   }
-);
+});
 
 /* =========================================================
    SCRIPTS
    ========================================================= */
 
-addTool(
-  'scripts', 'Scripts',
-  'List JavaScript files used by the page',
-  () => {
-    const data = [...document.scripts];
+addTool({
+  icon: 'code',
+  title: 'Scripts',
+  description: 'List inline and external JavaScript',
+  category: 'network',
+  keywords: 'javascript js script src inline module async defer',
+  action: () => {
 
-    modal(
+    const scripts =
+      [...document.scripts];
+
+    openModal(
       'Scripts',
-      data.length
-      ? data.map((s, i) => `
-        <div class="wt-card">
-          <div class="wt-label">Script ${i + 1}</div>
-          <div class="wt-value">${s.src ? urlHTML(s.src) : '(inline script)'}</div>
-        </div>
-      `).join('')
-      : empty('No scripts found.')
+
+      scripts.length
+        ? `
+          <div class="wt-table-wrap">
+
+            <table class="wt-table">
+
+              <tr>
+                <th>#</th>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Async</th>
+                <th>Defer</th>
+              </tr>
+
+              ${scripts.map((script, index) => `
+                <tr>
+
+                  <td>${index + 1}</td>
+
+                  <td>
+                    ${
+                      script.src
+                        ? urlHTML(script.src)
+                        : '(inline script)'
+                    }
+                  </td>
+
+                  <td>
+                    ${esc(
+                      script.type ||
+                      'classic'
+                    )}
+                  </td>
+
+                  <td>
+                    ${
+                      script.async
+                        ? 'Yes'
+                        : 'No'
+                    }
+                  </td>
+
+                  <td>
+                    ${
+                      script.defer
+                        ? 'Yes'
+                        : 'No'
+                    }
+                  </td>
+
+                </tr>
+              `).join('')}
+
+            </table>
+
+          </div>
+        `
+        : empty('No scripts found.')
     );
   }
-);
+});
 
 /* =========================================================
    RESOURCES
    ========================================================= */
 
-addTool(
-  'resources', 'Resources',
-  'Inspect resources loaded by the current page',
-  () => {
-    const data = performance.getEntriesByType('resource');
+addTool({
+  icon: 'resources',
+  title: 'Network Resources',
+  description: 'Inspect resources currently recorded by Performance API',
+  category: 'network',
+  keywords: 'network fetch resource performance waterfall xhr css js img',
+  action: () => {
 
-    modal(
-      'Resources',
-      data.length
-      ? `<table class="wt-table">
-          <tr><th>#</th><th>Type</th><th>Duration</th><th>Resource</th></tr>
-          ${data.map((x, i) => `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${esc(x.initiatorType || 'unknown')}</td>
-              <td>${x.duration.toFixed(1)} ms</td>
-              <td>${urlHTML(x.name)}</td>
-            </tr>`).join('')}
-        </table>`
-      : empty('No resource entries available.')
+    const resources =
+      performance.getEntriesByType('resource');
+
+    openModal(
+      'Network Resources',
+
+      resources.length
+        ? `
+          <div class="wt-grid">
+
+            ${stat(
+              resources.length,
+              'Resources'
+            )}
+
+            ${stat(
+              formatBytes(
+                resources.reduce(
+                  (sum, resource) =>
+                    sum +
+                    (
+                      resource.transferSize ||
+                      0
+                    ),
+                  0
+                )
+              ),
+              'Transfer Size'
+            )}
+
+          </div>
+
+          <br>
+
+          <div class="wt-table-wrap">
+
+            <table class="wt-table">
+
+              <tr>
+                <th>#</th>
+                <th>Initiator</th>
+                <th>Duration</th>
+                <th>Transfer</th>
+                <th>URL</th>
+              </tr>
+
+              ${resources.map((resource, index) => `
+                <tr>
+
+                  <td>${index + 1}</td>
+
+                  <td>
+                    ${esc(
+                      resource.initiatorType ||
+                      'unknown'
+                    )}
+                  </td>
+
+                  <td>
+                    ${resource.duration.toFixed(1)} ms
+                  </td>
+
+                  <td>
+                    ${formatBytes(
+                      resource.transferSize ||
+                      0
+                    )}
+                  </td>
+
+                  <td>
+                    ${urlHTML(resource.name)}
+                  </td>
+
+                </tr>
+              `).join('')}
+
+            </table>
+
+          </div>
+        `
+        : empty(
+          'No Performance Resource Timing entries available.'
+        )
     );
   }
-);
+});
 
 /* =========================================================
    PERFORMANCE
    ========================================================= */
 
-addTool(
-  'performance', 'Performance',
-  'Navigation timing and page load metrics',
-  () => {
-    const p = performance.getEntriesByType('navigation')[0];
+addTool({
+  icon: 'performance',
+  title: 'Performance',
+  description: 'Navigation timing, paint and memory metrics',
+  category: 'network',
+  keywords: 'performance timing dns ttfb dom load paint memory',
+  action: () => {
 
-    if (!p) { modal('Performance', empty('Navigation timing unavailable.')); return; }
+    const navigation =
+      performance.getEntriesByType(
+        'navigation'
+      )[0];
 
-    modal(
+    const paints =
+      performance.getEntriesByType(
+        'paint'
+      );
+
+    const firstPaint =
+      paints.find(
+        x => x.name === 'first-paint'
+      );
+
+    const firstContentfulPaint =
+      paints.find(
+        x => x.name === 'first-contentful-paint'
+      );
+
+    const memory =
+      performance.memory;
+
+    if (!navigation) {
+
+      openModal(
+        'Performance',
+        empty(
+          'Navigation Timing API unavailable.'
+        )
+      );
+
+      return;
+    }
+
+    openModal(
       'Performance',
-      `<div class="wt-stat-grid">
-        <div class="wt-stat"><div class="wt-stat-num">${p.domainLookupEnd - p.domainLookupStart | 0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DNS</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${p.responseEnd - p.responseStart | 0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">Response</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${p.domInteractive | 0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DOM Interactive</div></div>
-        <div class="wt-stat"><div class="wt-stat-num">${p.domComplete | 0}<span style="font-size:11px"> ms</span></div><div class="wt-stat-label">DOM Complete</div></div>
-      </div>`
+
+      `
+      <div class="wt-grid">
+
+        ${stat(
+          Math.round(
+            navigation.domainLookupEnd -
+            navigation.domainLookupStart
+          ) + ' ms',
+          'DNS'
+        )}
+
+        ${stat(
+          Math.round(
+            navigation.responseStart -
+            navigation.requestStart
+          ) + ' ms',
+          'Request'
+        )}
+
+        ${stat(
+          Math.round(
+            navigation.responseEnd -
+            navigation.responseStart
+          ) + ' ms',
+          'Response'
+        )}
+
+        ${stat(
+          Math.round(
+            navigation.domInteractive
+          ) + ' ms',
+          'DOM Interactive'
+        )}
+
+        ${stat(
+          Math.round(
+            navigation.domComplete
+          ) + ' ms',
+          'DOM Complete'
+        )}
+
+        ${stat(
+          firstContentfulPaint
+            ? Math.round(
+                firstContentfulPaint.startTime
+              ) + ' ms'
+            : 'N/A',
+          'FCP'
+        )}
+
+      </div>
+
+      <br>
+
+      ${firstPaint
+        ? card(
+            'First Paint',
+            `${firstPaint.startTime.toFixed(1)} ms`
+          )
+        : ''
+      }
+
+      ${
+        memory
+          ? `
+            <div class="wt-card">
+
+              <div class="wt-label">
+                JavaScript Memory
+              </div>
+
+              ${card(
+                'Used JS Heap',
+                formatBytes(
+                  memory.usedJSHeapSize
+                )
+              )}
+
+              ${card(
+                'Total JS Heap',
+                formatBytes(
+                  memory.totalJSHeapSize
+                )
+              )}
+
+              ${card(
+                'Heap Limit',
+                formatBytes(
+                  memory.jsHeapSizeLimit
+                )
+              )}
+
+            </div>
+          `
+          : `
+            <div class="wt-card">
+              <div class="wt-label">
+                JavaScript Memory
+              </div>
+              <div class="wt-value">
+                Performance.memory is not available in this browser.
+              </div>
+            </div>
+          `
+      }
+      `
     );
   }
-);
+});
 
 /* =========================================================
-   LOCAL / SESSION STORAGE
+   LOCAL STORAGE
    ========================================================= */
 
-const storageViewer = (name, store) => {
-  let rows = [];
+const storageInfo = (name, storage) => {
+
+  const entries = [];
 
   try {
-    for (let i = 0; i < store.length; i++) {
-      const key = store.key(i);
-      rows.push([key, store.getItem(key)]);
+
+    for (
+      let i = 0;
+      i < storage.length;
+      i++
+    ) {
+
+      const key =
+        storage.key(i);
+
+      const value =
+        storage.getItem(key);
+
+      entries.push({
+        key,
+        value,
+        bytes:
+          new Blob([value || '']).size
+      });
+
     }
-  } catch (e) {
-    modal(name, `<div class="wt-card">${esc(e.message)}</div>`);
+
+  } catch (error) {
+
+    openModal(
+      name,
+      card(
+        'Error',
+        esc(error.message)
+      )
+    );
+
     return;
   }
 
-  modal(
-    name,
-    rows.length
-    ? rows.map(r => `
-      <div class="wt-card">
-        <button class="wt-copy" data-copy="${esc(r[1])}">Copy</button>
-        <div class="wt-label">${esc(r[0])}</div>
-        <div class="wt-value">${esc(r[1])}</div>
-      </div>
-    `).join('')
-    : empty('Storage is empty.')
-  );
+  const totalBytes =
+    entries.reduce(
+      (sum, entry) =>
+        sum + entry.bytes,
+      0
+    );
 
-  bindCopies();
+  openModal(
+    name,
+
+    `
+    <div class="wt-grid">
+
+      ${stat(
+        entries.length,
+        'Keys'
+      )}
+
+      ${stat(
+        formatBytes(totalBytes),
+        'Value Size'
+      )}
+
+    </div>
+
+    <br>
+
+    ${
+      entries.length
+        ? entries.map(entry => `
+          <div class="wt-card">
+
+            <button
+              class="wt-copy"
+              data-copy="${escAttr(entry.value)}"
+            >
+              Copy
+            </button>
+
+            <div class="wt-label">
+              ${esc(entry.key)}
+            </div>
+
+            <div class="wt-value">
+              ${esc(entry.value)}
+            </div>
+
+            <div class="wt-muted">
+              ${formatBytes(entry.bytes)}
+            </div>
+
+          </div>
+        `).join('')
+        : empty(
+          'Storage is empty.'
+        )
+    }
+    `
+  );
 };
 
-addTool('localStorage', 'Local Storage', 'View current site localStorage keys and values', () => storageViewer('Local Storage', localStorage));
-addTool('sessionStorage', 'Session Storage', 'View current site sessionStorage keys and values', () => storageViewer('Session Storage', sessionStorage));
+addTool({
+  icon: 'storage',
+  title: 'Local Storage',
+  description: 'Inspect localStorage keys, values and size',
+  category: 'storage',
+  keywords: 'localstorage local storage persistent',
+  action: () =>
+    storageInfo(
+      'Local Storage',
+      localStorage
+    )
+});
+
+/* =========================================================
+   SESSION STORAGE
+   ========================================================= */
+
+addTool({
+  icon: 'session',
+  title: 'Session Storage',
+  description: 'Inspect sessionStorage keys, values and size',
+  category: 'storage',
+  keywords: 'sessionstorage session storage temporary',
+  action: () =>
+    storageInfo(
+      'Session Storage',
+      sessionStorage
+    )
+});
 
 /* =========================================================
    COOKIES
    ========================================================= */
 
-addTool(
-  'cookies', 'Cookies',
-  'Show cookie access status without exposing cookie values',
-  () => {
-    modal(
+addTool({
+  icon: 'cookies',
+  title: 'Cookies',
+  description: 'Inspect cookie availability and metadata safely',
+  category: 'storage',
+  keywords: 'cookie cookies secure httponly samesite',
+  action: () => {
+
+    const cookieString =
+      document.cookie || '';
+
+    const cookies =
+      cookieString
+        ? cookieString
+            .split(';')
+            .map(x => x.trim())
+            .filter(Boolean)
+        : [];
+
+    openModal(
       'Cookies',
-      card('Browser Cookie Support', navigator.cookieEnabled ? 'Enabled' : 'Disabled') +
-      `<div class="wt-card"><div class="wt-label">Security</div><div class="wt-value">Cookie values are intentionally not displayed.</div></div>`
+
+      `
+      ${card(
+        'Cookie API',
+        navigator.cookieEnabled
+          ? `
+            <span class="wt-badge wt-ok">
+              Enabled
+            </span>
+          `
+          : `
+            <span class="wt-badge wt-error">
+              Disabled
+            </span>
+          `
+      )}
+
+      ${card(
+        'Readable Cookie Count',
+        cookies.length
+      )}
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Security
+        </div>
+
+        <div class="wt-value">
+          Cookie values are intentionally not displayed.
+          HttpOnly cookies cannot be read through document.cookie.
+        </div>
+
+      </div>
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Cookie Names
+        </div>
+
+        ${
+          cookies.length
+            ? `
+              <ul class="wt-list">
+                ${cookies.map(cookie => {
+                  const name =
+                    cookie.split('=')[0];
+
+                  return `
+                    <li>
+                      ${esc(name)}
+                    </li>
+                  `;
+                }).join('')}
+              </ul>
+            `
+            : empty(
+              'No readable cookies.'
+            )
+        }
+
+      </div>
+      `
     );
+  }
+});
+
+/* =========================================================
+   PAGE SOURCE
+   ========================================================= */
+
+addTool({
+  icon: 'source',
+  title: 'Page Source',
+  description: 'View current DOM HTML with syntax highlighting',
+  category: 'page',
+  keywords: 'source html dom markup code',
+  action: () => {
+
+    const html =
+      document.documentElement.outerHTML;
+
+    openModal(
+      'Document HTML',
+
+      `
+      <div class="wt-code-wrap">
+
+        <div class="wt-code-toolbar">
+
+          <button
+            class="wt-copy"
+            data-copy="${escAttr(html)}"
+          >
+            Copy HTML
+          </button>
+
+        </div>
+
+        <pre class="wt-code">${highlightHTML(
+          html
+        )}</pre>
+
+      </div>
+      `
+    );
+  }
+});
+
+/* =========================================================
+   COPY PAGE TEXT
+   ========================================================= */
+
+addTool({
+  icon: 'text',
+  title: 'Copy Page Text',
+  description: 'Copy visible text from the current page',
+  category: 'page',
+  keywords: 'copy text visible content clipboard',
+  action: async () => {
+
+    const text =
+      document.body.innerText || '';
+
+    const ok =
+      await copyText(text);
+
+    toast(
+      ok
+        ? 'Page text copied'
+        : 'Clipboard permission denied'
+    );
+  }
+});
+
+/* =========================================================
+   META / HEAD INSPECTOR
+   ========================================================= */
+
+addTool({
+  icon: 'code',
+  title: 'Head Metadata',
+  description: 'Inspect meta tags, links, title and structured metadata',
+  category: 'page',
+  keywords: 'head meta title charset favicon manifest preload',
+  action: () => {
+
+    const meta =
+      [...document.head.querySelectorAll(
+        'meta'
+      )];
+
+    const links =
+      [...document.head.querySelectorAll(
+        'link'
+      )];
+
+    openModal(
+      'Head Metadata',
+
+      `
+      ${card(
+        'Title',
+        esc(document.title || '(empty)')
+      )}
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Meta Tags
+        </div>
+
+        ${
+          meta.length
+            ? `
+              <div class="wt-table-wrap">
+
+                <table class="wt-table">
+
+                  <tr>
+                    <th>Name</th>
+                    <th>Property</th>
+                    <th>Content</th>
+                  </tr>
+
+                  ${meta.map(item => `
+                    <tr>
+
+                      <td>
+                        ${esc(
+                          item.getAttribute('name') ||
+                          ''
+                        )}
+                      </td>
+
+                      <td>
+                        ${esc(
+                          item.getAttribute('property') ||
+                          ''
+                        )}
+                      </td>
+
+                      <td>
+                        ${esc(
+                          truncate(
+                            item.content || '',
+                            500
+                          )
+                        )}
+                      </td>
+
+                    </tr>
+                  `).join('')}
+
+                </table>
+
+              </div>
+            `
+            : empty('No meta tags.')
+        }
+
+      </div>
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Head Links
+        </div>
+
+        ${
+          links.length
+            ? `
+              <div class="wt-table-wrap">
+
+                <table class="wt-table">
+
+                  <tr>
+                    <th>Rel</th>
+                    <th>Type</th>
+                    <th>Href</th>
+                  </tr>
+
+                  ${links.map(link => `
+                    <tr>
+
+                      <td>
+                        ${esc(
+                          link.rel || ''
+                        )}
+                      </td>
+
+                      <td>
+                        ${esc(
+                          link.type || ''
+                        )}
+                      </td>
+
+                      <td>
+                        ${link.href
+                          ? urlHTML(link.href)
+                          : ''
+                        }
+                      </td>
+
+                    </tr>
+                  `).join('')}
+
+                </table>
+
+              </div>
+            `
+            : empty('No head links.')
+        }
+
+      </div>
+      `
+    );
+  }
+});
+
+/* =========================================================
+   DOWNLOAD PAGE PDF
+   ========================================================= */
+
+addTool({
+  icon: 'pdf',
+  title: 'Print / PDF',
+  description: 'Open the browser print dialog for PDF export',
+  category: 'export',
+  keywords: 'pdf print save pdf document',
+  action: () => {
+
+    panel.classList.remove('open');
+
+    closeModal();
+
+    setTimeout(() => {
+
+      try {
+        window.print();
+      } catch {
+        toast(
+          'Print dialog could not be opened'
+        );
+      }
+
+    }, 50);
+  }
+});
+
+/* =========================================================
+   ZIP EXPORT
+   ========================================================= */
+
+const crcTable = (() => {
+
+  const table =
+    new Uint32Array(256);
+
+  for (
+    let n = 0;
+    n < 256;
+    n++
+  ) {
+
+    let c = n;
+
+    for (
+      let k = 0;
+      k < 8;
+      k++
+    ) {
+
+      c =
+        c & 1
+          ? 0xedb88320 ^ (c >>> 1)
+          : c >>> 1;
+    }
+
+    table[n] = c >>> 0;
+  }
+
+  return table;
+
+})();
+
+const crc32 = data => {
+
+  let crc =
+    0xffffffff;
+
+  for (
+    let i = 0;
+    i < data.length;
+    i++
+  ) {
+
+    crc =
+      crcTable[
+        (crc ^ data[i]) & 0xff
+      ] ^
+      (crc >>> 8);
+  }
+
+  return (
+    crc ^
+    0xffffffff
+  ) >>> 0;
+};
+
+const uint16 = value => {
+
+  const array =
+    new Uint8Array(2);
+
+  new DataView(
+    array.buffer
+  ).setUint16(
+    0,
+    value,
+    true
+  );
+
+  return array;
+};
+
+const uint32 = value => {
+
+  const array =
+    new Uint8Array(4);
+
+  new DataView(
+    array.buffer
+  ).setUint32(
+    0,
+    value >>> 0,
+    true
+  );
+
+  return array;
+};
+
+const concatBytes = arrays => {
+
+  const total =
+    arrays.reduce(
+      (sum, array) =>
+        sum + array.length,
+      0
+    );
+
+  const result =
+    new Uint8Array(total);
+
+  let offset = 0;
+
+  arrays.forEach(array => {
+
+    result.set(
+      array,
+      offset
+    );
+
+    offset += array.length;
+
+  });
+
+  return result;
+};
+
+const createStoredZip = entries => {
+
+  const encoder =
+    new TextEncoder();
+
+  const localParts = [];
+  const centralParts = [];
+
+  let offset = 0;
+
+  entries.forEach(entry => {
+
+    const name =
+      encoder.encode(entry.name);
+
+    const data =
+      entry.data instanceof Uint8Array
+        ? entry.data
+        : new Uint8Array(entry.data);
+
+    const crc =
+      crc32(data);
+
+    const localHeader =
+      concatBytes([
+
+        uint32(0x04034b50),
+        uint16(20),
+        uint16(0x0800),
+        uint16(0),
+        uint16(0),
+        uint16(0),
+        uint32(crc),
+        uint32(data.length),
+        uint32(data.length),
+        uint16(name.length),
+        uint16(0),
+        name
+
+      ]);
+
+    localParts.push(
+      localHeader,
+      data
+    );
+
+    const centralHeader =
+      concatBytes([
+
+        uint32(0x02014b50),
+        uint16(20),
+        uint16(20),
+        uint16(0x0800),
+        uint16(0),
+        uint16(0),
+        uint16(0),
+        uint32(crc),
+        uint32(data.length),
+        uint32(data.length),
+        uint16(name.length),
+        uint16(0),
+        uint16(0),
+        uint16(0),
+        uint16(0),
+        uint32(0),
+        uint32(offset),
+        name
+
+      ]);
+
+    centralParts.push(
+      centralHeader
+    );
+
+    offset +=
+      localHeader.length +
+      data.length;
+  });
+
+  const local =
+    concatBytes(localParts);
+
+  const central =
+    concatBytes(centralParts);
+
+  const end =
+    concatBytes([
+
+      uint32(0x06054b50),
+      uint16(0),
+      uint16(0),
+      uint16(entries.length),
+      uint16(entries.length),
+      uint32(central.length),
+      uint32(local.length),
+      uint16(0)
+
+    ]);
+
+  return new Blob(
+    [local, central, end],
+    {
+      type: 'application/zip'
+    }
+  );
+};
+
+const loadJSZip = () =>
+  new Promise((resolve, reject) => {
+
+    if (window.JSZip) {
+      resolve(window.JSZip);
+      return;
+    }
+
+    const existing =
+      [...document.scripts].find(
+        script =>
+          script.src.includes(
+            'jszip'
+          )
+      );
+
+    if (existing) {
+
+      existing.addEventListener(
+        'load',
+        () =>
+          window.JSZip
+            ? resolve(window.JSZip)
+            : reject(
+                new Error(
+                  'JSZip unavailable'
+                )
+              ),
+        { once: true }
+      );
+
+      existing.addEventListener(
+        'error',
+        () =>
+          reject(
+            new Error(
+              'JSZip failed'
+            )
+          ),
+        { once: true }
+      );
+
+      return;
+    }
+
+    const script =
+      document.createElement(
+        'script'
+      );
+
+    script.src =
+      'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+
+    script.async = true;
+
+    script.onload = () => {
+
+      if (window.JSZip) {
+        resolve(window.JSZip);
+      } else {
+        reject(
+          new Error(
+            'JSZip unavailable'
+          )
+        );
+      }
+
+    };
+
+    script.onerror = () => {
+      reject(
+        new Error(
+          'Unable to load JSZip'
+        )
+      );
+    };
+
+    document.head.appendChild(script);
+
+  });
+
+const fetchWithTimeout = async (
+  url,
+  timeout = 10000
+) => {
+
+  const controller =
+    new AbortController();
+
+  const timer =
+    setTimeout(
+      () => controller.abort(),
+      timeout
+    );
+
+  try {
+
+    const response =
+      await fetch(url, {
+        credentials: 'same-origin',
+        cache: 'default',
+        signal: controller.signal
+      });
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status}`
+      );
+    }
+
+    return {
+      url: response.url || url,
+      type:
+        response.headers.get(
+          'content-type'
+        ) || '',
+      data:
+        new Uint8Array(
+          await response.arrayBuffer()
+        )
+    };
+
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const collectExportResources = () => {
+
+  const map =
+    new Map();
+
+  const add = (
+    value,
+    type = 'asset'
+  ) => {
+
+    const absolute =
+      absoluteURL(value);
+
+    if (!absolute) return;
+
+    if (!/^https?:$/i.test(
+      new URL(absolute).protocol
+    )) {
+      return;
+    }
+
+    if (!isSameOrigin(absolute)) {
+      return;
+    }
+
+    if (!map.has(absolute)) {
+      map.set(
+        absolute,
+        {
+          url: absolute,
+          type
+        }
+      );
+    }
+
+  };
+
+  document.querySelectorAll(
+    'script[src]'
+  ).forEach(script => {
+
+    add(
+      script.src,
+      'js'
+    );
+
+  });
+
+  document.querySelectorAll(
+    'link[href]'
+  ).forEach(link => {
+
+    const rel =
+      link.rel.toLowerCase();
+
+    if (
+      rel.includes('stylesheet')
+    ) {
+
+      add(
+        link.href,
+        'css'
+      );
+
+    } else {
+
+      add(
+        link.href,
+        'asset'
+      );
+
+    }
+
+  });
+
+  document.querySelectorAll(
+    'img[src],video[src],audio[src],iframe[src],source[src]'
+  ).forEach(element => {
+
+    add(
+      element.currentSrc ||
+      element.src,
+      'asset'
+    );
+
+  });
+
+  document.querySelectorAll(
+    '[poster]'
+  ).forEach(element => {
+
+    add(
+      element.getAttribute(
+        'poster'
+      ),
+      'asset'
+    );
+
+  });
+
+  document.querySelectorAll(
+    '[srcset]'
+  ).forEach(element => {
+
+    const srcset =
+      element.getAttribute(
+        'srcset'
+      ) || '';
+
+    srcset
+      .split(',')
+      .forEach(part => {
+
+        const candidate =
+          part.trim()
+            .split(/\s+/)[0];
+
+        if (candidate) {
+          add(
+            candidate,
+            'asset'
+          );
+        }
+
+      });
+
+  });
+
+  try {
+
+    performance
+      .getEntriesByType('resource')
+      .forEach(entry => {
+
+        if (!entry?.name) {
+          return;
+        }
+
+        const type =
+          entry.initiatorType === 'script'
+            ? 'js'
+            : entry.initiatorType === 'css'
+              ? 'css'
+              : 'asset';
+
+        add(
+          entry.name,
+          type
+        );
+
+      });
+
+  } catch {}
+
+  return [
+    ...map.values()
+  ];
+};
+
+const rewriteHTML = (
+  documentClone,
+  mapping
+) => {
+
+  const rewrite =
+    value => {
+
+      const absolute =
+        absoluteURL(value);
+
+      return (
+        mapping.get(
+          absolute
+        ) || value
+      );
+    };
+
+  documentClone
+    .querySelectorAll(
+      'script[src]'
+    )
+    .forEach(element => {
+
+      const original =
+        element.getAttribute(
+          'src'
+        );
+
+      element.setAttribute(
+        'src',
+        rewrite(original)
+      );
+
+    });
+
+  documentClone
+    .querySelectorAll(
+      'link[href]'
+    )
+    .forEach(element => {
+
+      const original =
+        element.getAttribute(
+          'href'
+        );
+
+      const replaced =
+        rewrite(original);
+
+      element.setAttribute(
+        'href',
+        replaced
+      );
+
+    });
+
+  documentClone
+    .querySelectorAll(
+      'img[src],video[src],audio[src],iframe[src],source[src]'
+    )
+    .forEach(element => {
+
+      const original =
+        element.getAttribute(
+          'src'
+        );
+
+      element.setAttribute(
+        'src',
+        rewrite(original)
+      );
+
+    });
+
+  documentClone
+    .querySelectorAll(
+      '[poster]'
+    )
+    .forEach(element => {
+
+      const original =
+        element.getAttribute(
+          'poster'
+        );
+
+      element.setAttribute(
+        'poster',
+        rewrite(original)
+      );
+
+    });
+
+  documentClone
+    .querySelectorAll(
+      '[srcset]'
+    )
+    .forEach(element => {
+
+      const srcset =
+        element.getAttribute(
+          'srcset'
+        ) || '';
+
+      const rewritten =
+        srcset
+          .split(',')
+          .map(part => {
+
+            const bits =
+              part.trim()
+                .split(/\s+/);
+
+            if (!bits[0]) {
+              return part;
+            }
+
+            bits[0] =
+              rewrite(bits[0]);
+
+            return bits.join(' ');
+
+          })
+          .join(', ');
+
+      element.setAttribute(
+        'srcset',
+        rewritten
+      );
+
+    });
+};
+
+const rewriteCSS = (
+  text,
+  cssURL,
+  mapping
+) => {
+
+  return text.replace(
+    /url\(\s*(['"]?)([^'")]+)\1\s*\)/gi,
+    (full, quote, value) => {
+
+      const raw =
+        value.trim();
+
+      if (
+        !raw ||
+        raw.startsWith('data:') ||
+        raw.startsWith('#') ||
+        raw.startsWith('blob:')
+      ) {
+        return full;
+      }
+
+      const absolute =
+        absoluteURL(
+          new URL(
+            raw,
+            cssURL
+          ).href
+        );
+
+      const mapped =
+        mapping.get(
+          absolute
+        );
+
+      return mapped
+        ? `url("${mapped}")`
+        : full;
+    }
+  );
+};
+
+const sanitizeExportDOM = () => {
+
+  const clone =
+    document.documentElement.cloneNode(
+      true
+    );
+
+  clone
+    .querySelectorAll(
+      '#wt-pro-app,#wt-pro-modal,#wt-pro-toast-container,#wt-pro-style'
+    )
+    .forEach(
+      element => element.remove()
+    );
+
+  clone
+    .querySelectorAll(
+      'input,textarea,select'
+    )
+    .forEach(element => {
+
+      if (
+        element.tagName ===
+        'TEXTAREA'
+      ) {
+
+        element.textContent = '';
+
+      }
+
+      if (
+        element.tagName ===
+        'INPUT'
+      ) {
+
+        const type =
+          (
+            element.getAttribute(
+              'type'
+            ) || ''
+          ).toLowerCase();
+
+        if (
+          type === 'checkbox' ||
+          type === 'radio'
+        ) {
+
+          element.removeAttribute(
+            'checked'
+          );
+
+        } else {
+
+          element.removeAttribute(
+            'value'
+          );
+
+        }
+
+      }
+
+    });
+
+  return clone;
+};
+
+const exportFrontend = async () => {
+
+  const filename =
+    `${safeFilename(
+      location.hostname ||
+      'page'
+    )}-frontend.zip`;
+
+  const modal =
+    openModal(
+      'Frontend ZIP Export',
+
+      `
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Status
+        </div>
+
+        <div
+          class="wt-value"
+          data-export-status
+        >
+          Preparing...
+        </div>
+
+        <div class="wt-progress">
+          <div
+            class="wt-progress-bar"
+            data-export-progress
+          ></div>
+        </div>
+
+        <div class="wt-status">
+          Same-origin browser-accessible resources
+          will be collected.
+        </div>
+
+      </div>
+      `
+    );
+
+  const status =
+    modal.querySelector(
+      '[data-export-status]'
+    );
+
+  const progress =
+    modal.querySelector(
+      '[data-export-progress]'
+    );
+
+  const update = (
+    message,
+    percent
+  ) => {
+
+    if (status) {
+      status.textContent =
+        message;
+    }
+
+    if (progress) {
+      progress.style.width =
+        `${Math.max(
+          0,
+          Math.min(
+            100,
+            percent
+          )
+        )}%`;
+    }
+
+  };
+
+  try {
+
+    update(
+      'Collecting resources...',
+      5
+    );
+
+    const resources =
+      collectExportResources();
+
+    const mapping =
+      new Map();
+
+    const used =
+      new Set([
+        'index.html',
+        'manifest.json'
+      ]);
+
+    const entries = [];
+
+    const extension = (
+      url,
+      type
+    ) => {
+
+      try {
+
+        const pathname =
+          new URL(url)
+            .pathname;
+
+        const basename =
+          decodeURIComponent(
+            pathname
+              .split('/')
+              .pop() ||
+              'resource'
+          );
+
+        const clean =
+          safeFilename(
+            basename
+          );
+
+        if (
+          clean.includes('.')
+        ) {
+          return clean;
+        }
+
+        if (type === 'js') {
+          return `${clean}.js`;
+        }
+
+        if (type === 'css') {
+          return `${clean}.css`;
+        }
+
+        return clean;
+
+      } catch {
+
+        return (
+          type === 'js'
+            ? 'script.js'
+            : type === 'css'
+              ? 'style.css'
+              : 'resource'
+        );
+
+      }
+
+    };
+
+    const uniquePath =
+      (
+        path,
+        usedSet
+      ) => {
+
+        if (!usedSet.has(path)) {
+          usedSet.add(path);
+          return path;
+        }
+
+        const dot =
+          path.lastIndexOf('.');
+
+        const base =
+          dot > 0
+            ? path.slice(0, dot)
+            : path;
+
+        const ext =
+          dot > 0
+            ? path.slice(dot)
+            : '';
+
+        let index = 2;
+        let candidate;
+
+        do {
+
+          candidate =
+            `${base}-${index}${ext}`;
+
+          index++;
+
+        } while (
+          usedSet.has(candidate)
+        );
+
+        usedSet.add(candidate);
+
+        return candidate;
+      };
+
+    resources.forEach(resource => {
+
+      const folder =
+        resource.type === 'js'
+          ? 'js'
+          : resource.type === 'css'
+            ? 'css'
+            : 'assets';
+
+      const path =
+        uniquePath(
+          `${folder}/${extension(
+            resource.url,
+            resource.type
+          )}`,
+          used
+        );
+
+      mapping.set(
+        resource.url,
+        path
+      );
+
+      resource.exportPath =
+        path;
+
+    });
+
+    let completed = 0;
+    let skipped = 0;
+
+    for (
+      const resource of resources
+    ) {
+
+      try {
+
+        update(
+          `Fetching ${completed + 1}/${resources.length}`,
+          10 +
+          (
+            completed /
+            Math.max(
+              resources.length,
+              1
+            )
+          ) * 70
+        );
+
+        const response =
+          await fetchWithTimeout(
+            resource.url
+          );
+
+        let data =
+          response.data;
+
+        if (
+          resource.type === 'css'
+        ) {
+
+          const text =
+            new TextDecoder()
+              .decode(data);
+
+          const rewritten =
+            rewriteCSS(
+              text,
+              resource.url,
+              mapping
+            );
+
+          data =
+            new TextEncoder()
+              .encode(rewritten);
+
+        }
+
+        entries.push({
+          name:
+            resource.exportPath,
+          data
+        });
+
+      } catch {
+
+        skipped++;
+
+      }
+
+      completed++;
+    }
+
+    const clone =
+      sanitizeExportDOM();
+
+    rewriteHTML(
+      clone,
+      mapping
+    );
+
+    const html =
+      '<!DOCTYPE html>\n' +
+      clone.outerHTML;
+
+    entries.unshift({
+      name: 'index.html',
+      data:
+        new TextEncoder()
+          .encode(html)
+    });
+
+    const manifest = {
+      exporter: 'Web Tools Pro',
+      version: '2.0',
+      exportedAt:
+        new Date().toISOString(),
+      page: {
+        url: location.href,
+        title: document.title,
+        origin: location.origin
+      },
+      resources: entries.map(
+        entry => entry.name
+      ),
+      skippedResources: skipped
+    };
+
+    entries.push({
+      name: 'manifest.json',
+      data:
+        new TextEncoder()
+          .encode(
+            JSON.stringify(
+              manifest,
+              null,
+              2
+            )
+          )
+    });
+
+    update(
+      'Building ZIP...',
+      88
+    );
+
+    let zipBlob;
+
+    try {
+
+      const JSZip =
+        await loadJSZip();
+
+      const zip =
+        new JSZip();
+
+      entries.forEach(entry => {
+
+        zip.file(
+          entry.name,
+          entry.data
+        );
+
+      });
+
+      zipBlob =
+        await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: {
+            level: 6
+          }
+        });
+
+    } catch {
+
+      zipBlob =
+        createStoredZip(entries);
+
+    }
+
+    update(
+      'Downloading...',
+      97
+    );
+
+    downloadBlob(
+      zipBlob,
+      filename
+    );
+
+    update(
+      skipped
+        ? `Completed — ${skipped} resource(s) skipped`
+        : 'Export completed successfully',
+      100
+    );
+
+    const content =
+      modal.querySelector(
+        '#wt-pro-content'
+      );
+
+    content.insertAdjacentHTML(
+      'beforeend',
+      `
+      ${card(
+        'Filename',
+        esc(filename)
+      )}
+
+      ${card(
+        'Files',
+        entries.length
+      )}
+
+      ${card(
+        'Skipped',
+        skipped
+      )}
+
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Important
+        </div>
+
+        <div class="wt-value">
+          Browser security restrictions can prevent
+          cross-origin or protected resources from being
+          exported. Server-side/backend source code,
+          HTTP-only cookies, credentials and authorization
+          headers are not included.
+        </div>
+
+      </div>
+      `
+    );
+
+  } catch (error) {
+
+    setModalHTML(
+      `
+      <div class="wt-card">
+
+        <div class="wt-label">
+          Export Failed
+        </div>
+
+        <div class="wt-value">
+          ${esc(
+            error?.message ||
+            'Unknown export error'
+          )}
+        </div>
+
+      </div>
+
+      <div class="wt-card">
+
+        <div class="wt-value">
+          The original page was not modified.
+        </div>
+
+      </div>
+      `
+    );
+
+  }
+};
+
+addTool({
+  icon: 'download',
+  title: 'Download Frontend ZIP',
+  description: 'Export HTML, CSS, JS and same-origin assets',
+  category: 'export',
+  keywords: 'download zip frontend export html css javascript assets',
+  action: exportFrontend
+});
+
+/* =========================================================
+   EVENT HANDLERS
+   ========================================================= */
+
+searchInput.addEventListener(
+  'input',
+  renderTools
+);
+
+root.querySelectorAll(
+  '.wt-pro-category'
+).forEach(button => {
+
+  button.addEventListener(
+    'click',
+    () => {
+
+      root
+        .querySelectorAll(
+          '.wt-pro-category'
+        )
+        .forEach(
+          item =>
+            item.classList.remove(
+              'active'
+            )
+        );
+
+      button.classList.add(
+        'active'
+      );
+
+      renderTools();
+    }
+  );
+
+});
+
+root.querySelector(
+  '#wt-pro-launch'
+).addEventListener(
+  'click',
+  () => {
+
+    state.panelOpen =
+      !state.panelOpen;
+
+    panel.classList.toggle(
+      'open',
+      state.panelOpen
+    );
+
+    if (state.panelOpen) {
+      searchInput.focus();
+    }
+
+  }
+);
+
+root.querySelector(
+  '#wt-pro-close'
+).addEventListener(
+  'click',
+  () => {
+
+    state.panelOpen = false;
+
+    panel.classList.remove(
+      'open'
+    );
+
+  }
+);
+
+root.querySelector(
+  '#wt-pro-theme'
+).addEventListener(
+  'click',
+  () => {
+
+    state.theme =
+      state.theme === 'dark'
+        ? 'light'
+        : 'dark';
+
+    if (
+      state.theme === 'light'
+    ) {
+
+      document.documentElement
+        .style.setProperty(
+          '--wt-panel',
+          '#f5f7fa'
+        );
+
+      toast(
+        'Light theme selected'
+      );
+
+    } else {
+
+      document.documentElement
+        .style.removeProperty(
+          '--wt-panel'
+        );
+
+      toast(
+        'Dark theme selected'
+      );
+
+    }
+
   }
 );
 
 /* =========================================================
-   SEARCH
+   OUTSIDE CLICK
    ========================================================= */
 
-search.oninput = () => {
-  const q = search.value.toLowerCase().trim();
-  tools.querySelectorAll('.wt-tool').forEach(b => {
-    b.style.display = !q || b.dataset.search.includes(q) ? 'flex' : 'none';
-  });
-};
+document.addEventListener(
+  'click',
+  event => {
+
+    if (!state.panelOpen) {
+      return;
+    }
+
+    if (
+      root.contains(
+        event.target
+      )
+    ) {
+      return;
+    }
+
+    if (
+      event.target.closest?.(
+        '#wt-pro-modal'
+      )
+    ) {
+      return;
+    }
+
+    state.panelOpen = false;
+
+    panel.classList.remove(
+      'open'
+    );
+
+  },
+  true
+);
 
 /* =========================================================
-   DRAGGABLE LAUNCHER + SMART PANEL POSITIONING
+   KEYBOARD SHORTCUTS
    ========================================================= */
 
-const DRAG_THRESHOLD = 6;
-const MARGIN = 10;
+document.addEventListener(
+  'keydown',
+  event => {
 
-let dragState = null;
+    if (
+      event.altKey &&
+      event.shiftKey &&
+      event.key.toLowerCase() === 'w'
+    ) {
 
-const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+      event.preventDefault();
 
-const lockAppToLeftTop = () => {
-  // convert current right/bottom-anchored position into explicit left/top
-  // so it can be freely dragged anywhere on screen.
-  const rect = root.getBoundingClientRect();
-  root.style.left = rect.left + 'px';
-  root.style.top = rect.top + 'px';
-  root.style.right = 'auto';
-  root.style.bottom = 'auto';
-};
+      state.panelOpen =
+        !state.panelOpen;
 
-const positionPanel = () => {
-  const btnRect = launch.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+      panel.classList.toggle(
+        'open',
+        state.panelOpen
+      );
 
-  panel.style.display = 'block';
-  const panelRect = panel.getBoundingClientRect();
-  const pw = panelRect.width || 380;
-  const ph = Math.min(panelRect.height || 420, vh * 0.74);
+      if (state.panelOpen) {
+        searchInput.focus();
+      }
 
-  // vertical: prefer opening above the button (like the original bottom-right
-  // default), fall back to below if there isn't room above.
-  const roomAbove = btnRect.top;
-  const roomBelow = vh - btnRect.bottom;
+      return;
+    }
 
-  let top;
-  if (roomAbove >= ph + MARGIN || roomAbove >= roomBelow) {
-    top = btnRect.top - ph - 10;
-  } else {
-    top = btnRect.bottom + 10;
-  }
-  top = clamp(top, MARGIN, vh - ph - MARGIN);
+    if (
+      event.key === 'Escape'
+    ) {
 
-  // horizontal: align panel's right edge to button's right edge by default,
-  // clamp so it never runs off either side of the viewport.
-  let left = btnRect.right - pw;
-  left = clamp(left, MARGIN, vw - pw - MARGIN);
+      if (state.inspector) {
+        stopInspector();
+        toast(
+          'Inspector disabled'
+        );
+        return;
+      }
 
-  panel.style.left = left + 'px';
-  panel.style.top = top + 'px';
-};
+      if (state.modalOpen) {
+        closeModal();
+        return;
+      }
 
-const openPanel = () => {
-  panel.style.display = 'block';
-  positionPanel();
-};
+      if (state.panelOpen) {
 
-const closePanel = () => {
-  panel.style.display = 'none';
-};
+        state.panelOpen = false;
 
-const togglePanel = () => {
-  if (panel.style.display === 'block') closePanel();
-  else openPanel();
-};
+        panel.classList.remove(
+          'open'
+        );
 
-launch.addEventListener('pointerdown', e => {
-  if (e.button !== undefined && e.button !== 0) return;
+      }
 
-  const rect = root.getBoundingClientRect();
+    }
 
-  dragState = {
-    pointerId: e.pointerId,
-    startX: e.clientX,
-    startY: e.clientY,
-    originLeft: rect.left,
-    originTop: rect.top,
-    moved: false
-  };
+  },
+  true
+);
 
-  launch.setPointerCapture(e.pointerId);
+/* =========================================================
+   INSPECTOR TOOL
+   ========================================================= */
+
+addTool({
+  icon: 'inspector',
+  title: 'DOM Inspector',
+  description: 'Click any page element to inspect it',
+  category: 'page',
+  keywords: 'dom inspect element css computed style dimensions',
+  action: startInspector
 });
 
-launch.addEventListener('pointermove', e => {
-  if (!dragState || dragState.pointerId !== e.pointerId) return;
+/* =========================================================
+   RENDER
+   ========================================================= */
 
-  const dx = e.clientX - dragState.startX;
-  const dy = e.clientY - dragState.startY;
+renderTools();
 
-  if (!dragState.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-    dragState.moved = true;
-    lockAppToLeftTop();
-    // re-derive origin from the now-explicit left/top
-    dragState.originLeft = parseFloat(root.style.left);
-    dragState.originTop = parseFloat(root.style.top);
-    launch.classList.add('wt-dragging');
-    closePanel();
-  }
+/* =========================================================
+   INITIAL MESSAGE
+   ========================================================= */
 
-  if (!dragState.moved) return;
-
-  const rect = root.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  let newLeft = dragState.originLeft + dx;
-  let newTop = dragState.originTop + dy;
-
-  newLeft = clamp(newLeft, MARGIN, vw - rect.width - MARGIN);
-  newTop = clamp(newTop, MARGIN, vh - rect.height - MARGIN);
-
-  root.style.left = newLeft + 'px';
-  root.style.top = newTop + 'px';
-});
-
-const endDrag = e => {
-  if (!dragState || dragState.pointerId !== e.pointerId) return;
-
-  const wasDrag = dragState.moved;
-
-  try { launch.releasePointerCapture(e.pointerId); } catch {}
-  launch.classList.remove('wt-dragging');
-  dragState = null;
-
-  if (!wasDrag) {
-    togglePanel();
-  }
-};
-
-launch.addEventListener('pointerup', endDrag);
-launch.addEventListener('pointercancel', endDrag);
-
-root.querySelector('#wt-close').onclick = () => closePanel();
-
-window.addEventListener('resize', () => {
-  if (panel.style.display === 'block') positionPanel();
-});
+toast(
+  'Web Tools Pro loaded — Alt + Shift + W'
+);
 
 })();
