@@ -868,12 +868,15 @@ const css = `
   font-size: 12px;
 }
 
-.wt-code-wrap {
-  overflow: auto;
-  max-height: 68vh;
-  background: #080a0e;
-  border: 1px solid var(--wt-border-soft);
-  border-radius: 12px;
+#wt-pro-app .wt-code-wrap,
+#wt-pro-modal .wt-code-wrap {
+  display: block !important;
+  overflow: auto !important;
+  max-height: 68vh !important;
+  background: #080a0e !important;
+  border: 1px solid var(--wt-border-soft) !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
 }
 
 .wt-code-toolbar {
@@ -887,19 +890,34 @@ const css = `
   justify-content: flex-end;
 }
 
-.wt-code {
-  margin: 0;
-  padding: 14px;
-  color: #c9d1d9;
+#wt-pro-app .wt-code,
+#wt-pro-modal .wt-code {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 12px !important;
+
+  color: #c9d1d9 !important;
+
   font-family:
     ui-monospace,
     SFMono-Regular,
     Menlo,
     Consolas,
-    monospace;
-  font-size: 11px;
-  line-height: 1.65;
-  white-space: pre;
+    monospace !important;
+
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+
+  white-space: pre !important;
+  tab-size: 2 !important;
+
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+
+  font-weight: 400 !important;
+
+  box-sizing: border-box !important;
 }
 
 .wt-s-tag {
@@ -5130,44 +5148,63 @@ root.querySelector(
   }
 );
 
-root.querySelector(
-  '#wt-pro-theme'
-).addEventListener(
+root.querySelector('#wt-pro-theme').addEventListener(
   'click',
   () => {
-
     state.theme =
       state.theme === 'dark'
         ? 'light'
         : 'dark';
 
-    if (
+    const lightTheme = {
+      '--wt-bg': '#ffffff',
+      '--wt-bg2': '#f5f7fa',
+      '--wt-bg3': '#eef1f5',
+      '--wt-border': '#d7dce3',
+      '--wt-border-soft': '#e5e9ef',
+      '--wt-text': '#171a1f',
+      '--wt-muted': '#687181',
+      '--wt-accent': '#4f6fd8',
+      '--wt-accent-soft': '#4f6fd81c',
+      '--wt-green': '#18864b',
+      '--wt-yellow': '#a66a00',
+      '--wt-red': '#c73d3d'
+    };
+
+    const darkTheme = {
+      '--wt-bg': '#0e1014',
+      '--wt-bg2': '#15181e',
+      '--wt-bg3': '#1b1f27',
+      '--wt-border': '#282e38',
+      '--wt-border-soft': '#20252e',
+      '--wt-text': '#f1f4f8',
+      '--wt-muted': '#8d96a5',
+      '--wt-accent': '#7c9df5',
+      '--wt-accent-soft': '#7c9df51c',
+      '--wt-green': '#6fd69b',
+      '--wt-yellow': '#e8bc62',
+      '--wt-red': '#f27676'
+    };
+
+    const theme =
       state.theme === 'light'
-    ) {
+        ? lightTheme
+        : darkTheme;
 
-      document.documentElement
-        .style.setProperty(
-          '--wt-panel',
-          '#f5f7fa'
+    Object.entries(theme).forEach(
+      ([property, value]) => {
+        root.style.setProperty(
+          property,
+          value
         );
+      }
+    );
 
-      toast(
-        'Light theme selected'
-      );
-
-    } else {
-
-      document.documentElement
-        .style.removeProperty(
-          '--wt-panel'
-        );
-
-      toast(
-        'Dark theme selected'
-      );
-
-    }
-
+    toast(
+      state.theme === 'light'
+        ? 'Light theme selected'
+        : 'Dark theme selected'
+    );
   }
 );
 
@@ -5220,10 +5257,10 @@ document.addEventListener(
     if (
       event.altKey &&
       event.shiftKey &&
-      event.key.toLowerCase() === 'w'
+      event.code === 'KeyW'
     ) {
-
       event.preventDefault();
+      event.stopPropagation();
 
       state.panelOpen =
         !state.panelOpen;
