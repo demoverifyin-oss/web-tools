@@ -879,60 +879,6 @@ const css = `
   box-sizing: border-box !important;
 }
 
-
-/* =========================================================
-   ISOLATED PAGE SOURCE VIEWER
-   ========================================================= */
-
-#wt-pro-modal .wt-source-viewer {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-  height: 68vh !important;
-  min-height: 300px !important;
-  overflow: hidden !important;
-  background: #080a0e !important;
-  border: 1px solid var(--wt-border-soft) !important;
-  border-radius: 12px !important;
-  box-sizing: border-box !important;
-}
-
-#wt-pro-modal .wt-source-toolbar {
-  position: relative !important;
-  top: auto !important;
-  flex: 0 0 auto !important;
-  min-height: 42px !important;
-  padding: 7px 10px !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  background: #101319 !important;
-  border-bottom: 1px solid var(--wt-border-soft) !important;
-  box-sizing: border-box !important;
-}
-
-#wt-pro-modal .wt-source-info {
-  margin-left: auto !important;
-  padding-left: 10px !important;
-  color: var(--wt-muted) !important;
-  font-size: 10px !important;
-  line-height: 1.3 !important;
-  white-space: nowrap !important;
-}
-
-#wt-pro-modal .wt-source-frame {
-  display: block !important;
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  outline: 0 !important;
-  background: #080a0e !important;
-  box-sizing: border-box !important;
-}
-
 .wt-code-toolbar {
   position: sticky;
   top: 0;
@@ -1097,6 +1043,7 @@ const css = `
   flex-direction: column;
   gap: 7px;
   pointer-events: none;
+  width: min(360px, calc(100vw - 36px));
 }
 
 .wt-toast {
@@ -1108,6 +1055,75 @@ const css = `
   box-shadow: 0 15px 40px #000b;
   font-size: 11px;
   animation: wtToastIn .18s ease;
+  box-sizing: border-box;
+}
+
+.wt-download-notice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 11px;
+  overflow: hidden;
+  cursor: grab;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: pan-y;
+  transform: translateX(0);
+  transition: transform .22s ease, opacity .22s ease;
+}
+
+.wt-download-notice:active {
+  cursor: grabbing;
+}
+
+.wt-download-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--wt-border);
+  border-radius: 9px;
+  background: #ffffff08;
+}
+
+.wt-download-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.wt-download-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--wt-text);
+}
+
+.wt-download-file {
+  margin-top: 2px;
+  color: var(--wt-muted);
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-download-view {
+  flex: 0 0 auto;
+  border: 1px solid var(--wt-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #ffffff08;
+  color: var(--wt-text);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.wt-download-view:hover {
+  background: var(--wt-accent-soft);
+  border-color: var(--wt-accent);
 }
 
 @keyframes wtToastIn {
@@ -1119,6 +1135,87 @@ const css = `
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* =========================================================
+   ISOLATED LIGHT THEME
+   ========================================================= */
+
+#wt-pro-app[data-wt-theme='light'],
+#wt-pro-modal[data-wt-theme='light'],
+#wt-pro-toast-container[data-wt-theme='light'] {
+  --wt-bg: #ffffff;
+  --wt-bg2: #f5f7fa;
+  --wt-bg3: #eef1f5;
+  --wt-border: #d7dce3;
+  --wt-border-soft: #e5e9ef;
+  --wt-text: #171a1f;
+  --wt-muted: #687181;
+  --wt-accent: #4f6fd8;
+  --wt-accent-soft: #4f6fd81c;
+  --wt-green: #18864b;
+  --wt-yellow: #a66a00;
+  --wt-red: #c73d3d;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-launch {
+  border-color: #d7dce3;
+  background: linear-gradient(145deg, #ffffff, #eef1f5);
+  color: #171a1f;
+  box-shadow: 0 12px 35px #0002, inset 0 1px 0 #fff;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-panel {
+  background: #ffffffee;
+  box-shadow: 0 30px 90px #0003;
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-icon-btn,
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool-icon,
+#wt-pro-app[data-wt-theme='light'] .wt-copy,
+#wt-pro-app[data-wt-theme='light'] .wt-badge,
+#wt-pro-app[data-wt-theme='light'] .wt-pro-close {
+  background: #00000005;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-search {
+  background: #f5f7fa;
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool:hover {
+  background: var(--wt-accent-soft);
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool-arrow {
+  color: #687181;
+}
+
+#wt-pro-modal[data-wt-theme='light'] {
+  background: #00000035;
+}
+
+#wt-pro-modal[data-wt-theme='light'] #wt-pro-modal-box {
+  background: #ffffff;
+  box-shadow: 0 -25px 90px #0003;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-pro-grip {
+  background: #00000020;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-code-wrap,
+#wt-pro-modal[data-wt-theme='light'] .wt-code-toolbar {
+  background: #f5f7fa !important;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-code {
+  color: #24292f !important;
+}
+
+#wt-pro-toast-container[data-wt-theme='light'] .wt-toast {
+  background: #ffffff;
+  color: #171a1f;
+  box-shadow: 0 15px 40px #0003;
 }
 
 @media(max-width:600px) {
@@ -1278,8 +1375,7 @@ const searchInput = root.querySelector('#wt-pro-search');
    TOAST
    ========================================================= */
 
-const toast = message => {
-
+const getToastContainer = () => {
   let container = document.getElementById(
     'wt-pro-toast-container'
   );
@@ -1290,16 +1386,136 @@ const toast = message => {
     document.body.appendChild(container);
   }
 
+  return container;
+};
+
+const toast = message => {
+  const container = getToastContainer();
   const item = document.createElement('div');
 
   item.className = 'wt-toast';
   item.textContent = message;
-
   container.appendChild(item);
 
   setTimeout(() => {
     item.remove();
   }, 2200);
+};
+
+const openDownloads = () => {
+  try {
+    const tab = window.open(
+      'chrome://downloads/',
+      '_blank'
+    );
+
+    if (!tab) {
+      throw new Error('blocked');
+    }
+
+    return true;
+  } catch {
+    toast('Open Downloads with Ctrl + J');
+    return false;
+  }
+};
+
+const showDownloadNotice = filename => {
+  const container = getToastContainer();
+  const item = document.createElement('div');
+
+  item.className = 'wt-toast wt-download-notice';
+  item.setAttribute('role', 'status');
+  item.innerHTML = `
+    <div class="wt-download-icon" aria-hidden="true">
+      ${icon(ICONS.download, 15)}
+    </div>
+
+    <div class="wt-download-main">
+      <div class="wt-download-title">Download started</div>
+      <div class="wt-download-file" title="${escAttr(filename)}">
+        ${esc(filename)}
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="wt-download-view"
+      aria-label="View downloads"
+    >
+      View downloads
+    </button>
+  `;
+
+  container.appendChild(item);
+
+  item.querySelector('.wt-download-view')
+    ?.addEventListener('click', event => {
+      event.stopPropagation();
+      openDownloads();
+    });
+
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+
+  const finishSwipe = () => {
+    if (!dragging) return;
+    dragging = false;
+
+    if (Math.abs(currentX) > 90) {
+      item.style.transform = `translateX(${
+        currentX < 0 ? '-120%' : '120%'
+      })`;
+      item.style.opacity = '0';
+      setTimeout(() => item.remove(), 220);
+    } else {
+      item.style.transform = '';
+    }
+  };
+
+  item.addEventListener('pointerdown', event => {
+    if (event.target.closest('button')) return;
+    dragging = true;
+    startX = event.clientX;
+    currentX = 0;
+    item.style.transition = 'none';
+    try {
+      item.setPointerCapture(event.pointerId);
+    } catch {}
+  });
+
+  item.addEventListener('pointermove', event => {
+    if (!dragging) return;
+    currentX = event.clientX - startX;
+    if (Math.abs(currentX) > 8) {
+      item.style.transform = `translateX(${currentX}px)`;
+      item.style.opacity = String(
+        Math.max(.35, 1 - Math.abs(currentX) / 220)
+      );
+    }
+  });
+
+  item.addEventListener('pointerup', () => {
+    item.style.transition = '';
+    finishSwipe();
+  });
+
+  item.addEventListener('pointercancel', () => {
+    item.style.transition = '';
+    currentX = 0;
+    finishSwipe();
+  });
+
+  const timer = setTimeout(() => {
+    item.style.transform = 'translateX(0)';
+    item.style.opacity = '0';
+    setTimeout(() => item.remove(), 220);
+  }, 5000);
+
+  item.addEventListener('pointerdown', () => {
+    clearTimeout(timer);
+  }, { once: true });
 };
 
 /* =========================================================
@@ -3673,127 +3889,32 @@ addTool({
     const html =
       document.documentElement.outerHTML;
 
-    const sourceLines =
-      html.split(/\r\n|\r|\n/).length;
-
-    const sourceSize =
-      new Blob([html]).size;
-
-    /*
-     * Render the source inside an isolated iframe.
-     * The host page's CSS cannot affect elements inside
-     * this iframe, so global span/pre/div rules cannot
-     * create the large vertical gaps seen on some sites.
-     */
-    const highlightedSource =
-      highlightHTML(html);
-
-    const sourceDocument = `
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  html,
-  body {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    min-height: 100% !important;
-    background: #080a0e !important;
-    color: #c9d1d9 !important;
-  }
-
-  body {
-    overflow: auto !important;
-  }
-
-  pre {
-    display: block !important;
-    margin: 0 !important;
-    padding: 16px !important;
-    min-width: max-content !important;
-
-    background: #080a0e !important;
-    color: #c9d1d9 !important;
-
-    font-family:
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Monaco,
-      Consolas,
-      "Liberation Mono",
-      monospace !important;
-
-    font-size: 12px !important;
-    line-height: 1.5 !important;
-    font-weight: 400 !important;
-    letter-spacing: normal !important;
-    word-spacing: normal !important;
-
-    white-space: pre !important;
-    tab-size: 2 !important;
-  }
-
-  pre span {
-    display: inline !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    line-height: inherit !important;
-    font: inherit !important;
-    letter-spacing: normal !important;
-    word-spacing: normal !important;
-    white-space: pre !important;
-    vertical-align: baseline !important;
-  }
-
-  .wt-s-tag { color: #ff7b72 !important; }
-  .wt-s-attr { color: #d2a8ff !important; }
-  .wt-s-string { color: #a5d6ff !important; }
-  .wt-s-comment { color: #8b949e !important; }
-  .wt-s-text { color: #c9d1d9 !important; }
-  .wt-s-punct { color: #79c0ff !important; }
-</style>
-</head>
-<body>
-<pre>${highlightedSource}</pre>
-</body>
-</html>`;
+    // Keep the real DOM untouched; only compact repeated blank lines
+    // in the viewer so formatted pages remain easy to scan.
+    const displayHTML = html
+      .replace(/^[\t ]+$/gm, '')
+      .replace(/\n(?:[\t ]*\n){2,}/g, '\n\n');
 
     openModal(
       'Document HTML',
 
       `
-      <div class="wt-source-viewer">
+      <div class="wt-code-wrap">
 
-        <div class="wt-code-toolbar wt-source-toolbar">
+        <div class="wt-code-toolbar">
 
           <button
             class="wt-copy"
-            data-copy="${escAttr(html)}"
+            data-copy="${escAttr(displayHTML)}"
           >
             Copy HTML
           </button>
 
-          <span class="wt-source-info">
-            ${formatBytes(sourceSize)} · ${formatNumber(sourceLines)} lines
-          </span>
-
         </div>
 
-        <iframe
-          class="wt-source-frame"
-          sandbox
-          srcdoc="${escAttr(sourceDocument)}"
-          title="Document HTML source"
-        ></iframe>
+        <pre class="wt-code">${highlightHTML(
+          displayHTML
+        )}</pre>
 
       </div>
       `
@@ -3992,6 +4113,11 @@ addTool({
 
       try {
         window.print();
+        // print() returns after the print dialog closes. At that point
+        // the user has returned to the page, so show the download notice.
+        showDownloadNotice(
+          `${safeFilename(document.title || 'page')}.pdf`
+        );
       } catch {
         toast(
           'Print dialog could not be opened'
@@ -5140,6 +5266,8 @@ const exportFrontend = async () => {
       filename
     );
 
+    showDownloadNotice(filename);
+
     update(
       skipped
         ? `Completed — ${skipped} resource(s) skipped`
@@ -5311,49 +5439,17 @@ root.querySelector('#wt-pro-theme').addEventListener(
         ? 'light'
         : 'dark';
 
-    const lightTheme = {
-      '--wt-bg': '#ffffff',
-      '--wt-bg2': '#f5f7fa',
-      '--wt-bg3': '#eef1f5',
-      '--wt-border': '#d7dce3',
-      '--wt-border-soft': '#e5e9ef',
-      '--wt-text': '#171a1f',
-      '--wt-muted': '#687181',
-      '--wt-accent': '#4f6fd8',
-      '--wt-accent-soft': '#4f6fd81c',
-      '--wt-green': '#18864b',
-      '--wt-yellow': '#a66a00',
-      '--wt-red': '#c73d3d'
-    };
+    // Keep theme isolated to Web Tools only.
+    // Do not modify the host page's CSS or document theme.
+    const containers = [
+      root,
+      document.getElementById('wt-pro-modal'),
+      document.getElementById('wt-pro-toast-container')
+    ].filter(Boolean);
 
-    const darkTheme = {
-      '--wt-bg': '#0e1014',
-      '--wt-bg2': '#15181e',
-      '--wt-bg3': '#1b1f27',
-      '--wt-border': '#282e38',
-      '--wt-border-soft': '#20252e',
-      '--wt-text': '#f1f4f8',
-      '--wt-muted': '#8d96a5',
-      '--wt-accent': '#7c9df5',
-      '--wt-accent-soft': '#7c9df51c',
-      '--wt-green': '#6fd69b',
-      '--wt-yellow': '#e8bc62',
-      '--wt-red': '#f27676'
-    };
-
-    const theme =
-      state.theme === 'light'
-        ? lightTheme
-        : darkTheme;
-
-    Object.entries(theme).forEach(
-      ([property, value]) => {
-        root.style.setProperty(
-          property,
-          value
-        );
-      }
-    );
+    containers.forEach(container => {
+      container.dataset.wtTheme = state.theme;
+    });
 
     toast(
       state.theme === 'light'
