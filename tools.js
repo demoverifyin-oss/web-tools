@@ -1,4 +1,4 @@
-```javascript
+
 (()=> {
 'use strict';
 
@@ -1888,4 +1888,4 @@ root.querySelector('#wt-close').onclick=()=>{
 };
 
 })();
-```
+
