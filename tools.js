@@ -861,6 +861,26 @@ const css = `
   border-bottom: 0;
 }
 
+/* Host-page CSS isolation for tables and source-code viewers. */
+#wt-pro-modal .wt-table,
+#wt-pro-modal .wt-table * {
+  box-sizing: border-box !important;
+}
+
+#wt-pro-modal .wt-table tr {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.35 !important;
+  height: auto !important;
+}
+
+#wt-pro-modal .wt-table th,
+#wt-pro-modal .wt-table td {
+  margin: 0 !important;
+  line-height: 1.35 !important;
+  height: auto !important;
+}
+
 .wt-empty {
   text-align: center;
   color: var(--wt-muted);
@@ -918,6 +938,22 @@ const css = `
   font-weight: 400 !important;
 
   box-sizing: border-box !important;
+}
+
+/* Some host pages style every span/pre/div globally.
+   Force syntax-highlight spans to stay inline and compact. */
+#wt-pro-modal .wt-code > span,
+#wt-pro-modal .wt-code span {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.35 !important;
+  vertical-align: baseline !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+  white-space: pre !important;
 }
 
 .wt-s-tag {
@@ -1402,7 +1438,40 @@ const toast = message => {
   }, 2200);
 };
 
+const isAndroidDevice = /Android/i.test(
+  navigator.userAgent || ''
+);
+
 const openDownloads = () => {
+  /*
+   * Android: use an Android Intent URI from the user's click.
+   * This can open a Downloads-capable app when the browser/device
+   * allows the intent. A normal web page cannot directly browse
+   * the Android filesystem or force-open the Downloads folder.
+   */
+  if (isAndroidDevice) {
+    try {
+      const link = document.createElement('a');
+      link.href =
+        'intent:#Intent;action=android.intent.action.VIEW_DOWNLOADS;end';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        toast('If Downloads did not open, use Chrome ⋮ → Downloads');
+      }, 700);
+
+      return true;
+    } catch {
+      toast('Open Chrome ⋮ → Downloads');
+      return false;
+    }
+  }
+
   try {
     const tab = window.open(
       'chrome://downloads/',
