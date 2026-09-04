@@ -16,27 +16,49 @@ const esc=v=>String(v??'')
   .replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;');
 
-/* ---------- MAX Z-INDEX (fix: modal now guaranteed on top) ---------- */
 const Z=2147483647;
+
+/* ---------- Minimal line-icon set (no emoji, single stroke, currentColor) ---------- */
+const ic=(paths,size=18)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
+const ICONS={
+  brand:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  close:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  overview:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  links:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  images:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  forms:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 14 11 16 15 12"/>',
+  headings:'<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
+  inspector:'<circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
+  localStorage:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/>',
+  sessionStorage:'<path d="M22 18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  performance:'<polyline points="22 12 18 12 15 20 9 4 6 12 2 12"/>',
+  resources:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  cookies:'<path d="M12 22s7-3.5 7-9V6l-7-3-7 3v7c0 5.5 7 9 7 9z"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  source:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  scripts:'<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
+};
 
 const css=`
 :root{
-  --wt-bg:#0b0c0f;
-  --wt-panel:#111318f2;
-  --wt-card:#181b21;
-  --wt-border:#262a32;
-  --wt-border-soft:#1e2229;
-  --wt-text:#f2f4f8;
-  --wt-text-dim:#8b93a3;
-  --wt-accent:#7c9eff;
-  --wt-accent-soft:#7c9eff22;
-  --wt-radius:18px;
+  --wt-panel:#101216f5;
+  --wt-card:#171a1f;
+  --wt-border:#252932;
+  --wt-border-soft:#1c2028;
+  --wt-text:#eef0f4;
+  --wt-text-dim:#868f9f;
+  --wt-accent:#6f93f2;
+  --wt-accent-soft:#6f93f21c;
+  --wt-radius:16px;
+  --wt-safe-b:env(safe-area-inset-bottom,0px);
 }
 
 #wt-app{
   position:fixed;
   right:16px;
-  bottom:16px;
+  bottom:calc(16px + var(--wt-safe-b));
   z-index:${Z};
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
   color:var(--wt-text);
@@ -48,27 +70,31 @@ const css=`
   align-items:center;
   gap:8px;
   border:1px solid #ffffff14;
-  background:linear-gradient(160deg,#1a1d24,#0e1015);
+  background:linear-gradient(160deg,#181b21,#0c0e12);
   color:#fff;
   border-radius:999px;
-  padding:12px 18px;
-  font-size:14px;
+  padding:12px 17px;
+  font-size:13.5px;
   font-weight:600;
   letter-spacing:.01em;
-  box-shadow:0 10px 30px #0009,inset 0 1px 0 #ffffff12;
+  box-shadow:0 10px 28px #0009,inset 0 1px 0 #ffffff10;
   cursor:pointer;
-  transition:transform .15s ease,box-shadow .15s ease;
+  transition:transform .15s ease;
 }
 #wt-launch:active{transform:scale(.96)}
-#wt-launch .wt-ico{font-size:16px}
+#wt-launch svg{opacity:.9}
 
+/* Panel is fixed to the VIEWPORT (not absolute to #wt-app) so it can never
+   overflow off-screen regardless of the launcher button's own width. */
 #wt-panel{
   display:none;
-  position:absolute;
-  right:0;
-  bottom:64px;
-  width:min(380px,calc(100vw - 28px));
-  max-height:76vh;
+  position:fixed;
+  right:16px;
+  bottom:calc(76px + var(--wt-safe-b));
+  left:auto;
+  width:380px;
+  max-width:calc(100vw - 32px);
+  max-height:74vh;
   overflow:hidden;
   background:var(--wt-panel);
   backdrop-filter:blur(22px) saturate(160%);
@@ -84,20 +110,20 @@ const css=`
 }
 
 #wt-head{
-  padding:18px 18px 14px;
+  padding:17px 17px 13px;
   border-bottom:1px solid var(--wt-border-soft);
   display:flex;
   align-items:center;
   justify-content:space-between;
 }
 #wt-title{
-  font-size:16px;
+  font-size:15.5px;
   font-weight:700;
   display:flex;
   align-items:center;
-  gap:7px;
+  gap:8px;
 }
-#wt-title .wt-crown{font-size:15px}
+#wt-title svg{color:var(--wt-accent)}
 #wt-sub{
   color:var(--wt-text-dim);
   font-size:11px;
@@ -108,11 +134,10 @@ const css=`
   background:#ffffff0d;
   color:#cfd4de;
   border:1px solid #ffffff14;
-  width:30px;
-  height:30px;
-  border-radius:10px;
+  width:29px;
+  height:29px;
+  border-radius:9px;
   cursor:pointer;
-  font-size:13px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -121,8 +146,10 @@ const css=`
 #wt-close:active{background:#ffffff1f}
 
 #wt-search-wrap{
-  margin:14px;
+  margin:13px;
   position:relative;
+  display:flex;
+  align-items:center;
 }
 #wt-search{
   width:100%;
@@ -130,29 +157,28 @@ const css=`
   background:#0000003d;
   border:1px solid var(--wt-border);
   color:#fff;
-  padding:11px 12px 11px 34px;
-  border-radius:12px;
+  padding:10px 12px 10px 34px;
+  border-radius:11px;
   outline:none;
   font-size:13.5px;
   transition:border-color .15s,background .15s;
 }
+#wt-search::placeholder{color:#6d7482}
 #wt-search:focus{border-color:var(--wt-accent);background:#00000055}
 #wt-search-ico{
   position:absolute;
   left:11px;
-  top:50%;
-  transform:translateY(-50%);
-  opacity:.5;
-  font-size:13px;
+  color:var(--wt-text-dim);
+  display:flex;
   pointer-events:none;
 }
 
 #wt-tools{
-  padding:0 12px 14px;
+  padding:0 11px 13px;
   overflow:auto;
-  max-height:54vh;
+  max-height:52vh;
   display:grid;
-  gap:6px;
+  gap:5px;
 }
 
 .wt-tool{
@@ -161,26 +187,27 @@ const css=`
   display:flex;
   align-items:center;
   gap:12px;
-  padding:11px 12px;
+  padding:10px 11px;
   background:#ffffff05;
   border:1px solid transparent;
   color:var(--wt-text);
-  border-radius:13px;
+  border-radius:12px;
   cursor:pointer;
   transition:.15s;
 }
-.wt-tool:hover{background:var(--wt-accent-soft);border-color:#7c9eff33}
+.wt-tool:hover{background:var(--wt-accent-soft);border-color:#6f93f230}
 .wt-tool:active{transform:scale(.985)}
 .wt-tool-ico{
   flex:0 0 auto;
-  width:34px;
-  height:34px;
-  border-radius:10px;
+  width:32px;
+  height:32px;
+  border-radius:9px;
   background:#ffffff08;
+  border:1px solid var(--wt-border-soft);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:16px;
+  color:var(--wt-text-dim);
 }
 .wt-tool-body{min-width:0}
 .wt-tool-title{
@@ -196,7 +223,6 @@ const css=`
   white-space:nowrap;
 }
 
-/* ---------- MODAL (higher paint order + equal max z-index = always on top) ---------- */
 #wt-modal{
   position:fixed;
   inset:0;
@@ -219,9 +245,10 @@ const css=`
   backdrop-filter:blur(24px) saturate(160%);
   -webkit-backdrop-filter:blur(24px) saturate(160%);
   border:1px solid var(--wt-border);
-  border-radius:22px 22px 0 0;
+  border-radius:20px 20px 0 0;
   box-shadow:0 -20px 60px #000d;
   animation:wt-slide .2s cubic-bezier(.2,.9,.3,1.1);
+  padding-bottom:var(--wt-safe-b);
 }
 @keyframes wt-slide{
   from{transform:translateY(24px);opacity:0}
@@ -229,52 +256,52 @@ const css=`
 }
 
 #wt-box-grip{
-  width:36px;
+  width:34px;
   height:4px;
-  background:#ffffff26;
+  background:#ffffff24;
   border-radius:99px;
-  margin:10px auto 0;
+  margin:9px auto 0;
 }
 
 #wt-box-head{
-  padding:12px 18px 14px;
+  padding:11px 17px 13px;
   border-bottom:1px solid var(--wt-border-soft);
   display:flex;
   justify-content:space-between;
   align-items:center;
 }
 #wt-box-title{
-  font-size:15px;
+  font-size:14.5px;
   font-weight:700;
 }
 #wt-box-close{
   border:1px solid var(--wt-border);
   background:#ffffff0d;
   color:#e2e5eb;
-  border-radius:10px;
-  padding:7px 12px;
+  border-radius:9px;
+  padding:6px 11px;
   cursor:pointer;
-  font-size:12.5px;
+  font-size:12px;
   font-weight:600;
 }
 #wt-box-close:active{background:#ffffff1f}
 
 #wt-content{
-  padding:16px 18px 22px;
+  padding:15px 17px 20px;
   overflow:auto;
-  max-height:calc(88vh - 78px);
+  max-height:calc(88vh - 74px);
 }
 
 .wt-card{
   background:var(--wt-card);
   border:1px solid var(--wt-border-soft);
-  border-radius:13px;
-  padding:13px 14px;
-  margin-bottom:9px;
+  border-radius:12px;
+  padding:12px 13px;
+  margin-bottom:8px;
 }
 .wt-label{
   color:var(--wt-text-dim);
-  font-size:10px;
+  font-size:9.5px;
   text-transform:uppercase;
   letter-spacing:.07em;
   margin-bottom:5px;
@@ -282,7 +309,7 @@ const css=`
 }
 .wt-value{
   color:var(--wt-text);
-  font-size:13px;
+  font-size:12.5px;
   line-height:1.5;
   word-break:break-word;
 }
@@ -297,10 +324,10 @@ const css=`
   background:#ffffff0d;
   border:1px solid var(--wt-border);
   color:#dce1e8;
-  border-radius:9px;
+  border-radius:8px;
   padding:5px 10px;
   cursor:pointer;
-  font-size:11px;
+  font-size:10.5px;
   font-weight:600;
   transition:background .15s;
 }
@@ -309,25 +336,22 @@ const css=`
 .wt-stat-grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
-  gap:9px;
+  gap:8px;
 }
 .wt-stat{
   background:var(--wt-card);
   border:1px solid var(--wt-border-soft);
-  border-radius:13px;
-  padding:14px;
+  border-radius:12px;
+  padding:13px;
 }
 .wt-stat-num{
-  font-size:21px;
+  font-size:20px;
   font-weight:800;
-  background:linear-gradient(135deg,#fff,#9db4ff);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
+  color:var(--wt-text);
 }
 .wt-stat-label{
   color:var(--wt-text-dim);
-  font-size:11px;
+  font-size:10.5px;
   margin-top:3px;
   font-weight:600;
 }
@@ -335,27 +359,27 @@ const css=`
 .wt-table{
   width:100%;
   border-collapse:collapse;
-  font-size:12px;
+  font-size:11.5px;
 }
 .wt-table th,.wt-table td{
   border-bottom:1px solid var(--wt-border-soft);
-  padding:9px 7px;
+  padding:8px 7px;
   text-align:left;
   vertical-align:top;
 }
 .wt-table th{
   color:var(--wt-text-dim);
   font-weight:700;
-  font-size:10.5px;
+  font-size:10px;
   text-transform:uppercase;
   letter-spacing:.04em;
 }
 .wt-preview{
   width:100%;
-  max-height:230px;
+  max-height:220px;
   object-fit:contain;
   background:#050608;
-  border-radius:10px;
+  border-radius:9px;
   margin-top:8px;
   border:1px solid var(--wt-border-soft);
 }
@@ -363,22 +387,21 @@ const css=`
 .wt-empty{
   text-align:center;
   color:var(--wt-text-dim);
-  font-size:12.5px;
-  padding:26px 10px;
+  font-size:12px;
+  padding:24px 10px;
 }
 
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:99px}
 
 @media(max-width:600px){
-  #wt-app{right:12px;bottom:14px}
+  #wt-app{right:12px}
   #wt-panel{
-    right:auto;
-    left:50%;
-    transform:translateX(-50%);
+    right:11px;
+    max-width:calc(100vw - 22px);
     width:calc(100vw - 22px);
   }
-  #wt-box{border-radius:20px 20px 0 0}
+  #wt-box{border-radius:18px 18px 0 0}
 }
 `;
 
@@ -390,19 +413,19 @@ document.head.appendChild(style);
 root.id='wt-app';
 
 root.innerHTML=`
-<button id="wt-launch"><span class="wt-ico">⚡</span>Web Tools</button>
+<button id="wt-launch">${ic(ICONS.brand,16)}Web Tools</button>
 
 <div id="wt-panel">
   <div id="wt-head">
     <div>
-      <div id="wt-title"><span class="wt-crown">✦</span>Web Tools</div>
+      <div id="wt-title">${ic(ICONS.brand,15)}Web Tools</div>
       <div id="wt-sub">Browser inspection toolkit</div>
     </div>
-    <button id="wt-close">✕</button>
+    <button id="wt-close">${ic(ICONS.close,15)}</button>
   </div>
 
   <div id="wt-search-wrap">
-    <span id="wt-search-ico">🔍</span>
+    <span id="wt-search-ico">${ic(ICONS.search,15)}</span>
     <input id="wt-search" placeholder="Search tools...">
   </div>
 
@@ -434,7 +457,6 @@ const modal=(title,html)=>{
     </div>
   `;
 
-  // Appended last -> always paints above #wt-app even at equal z-index
   document.body.appendChild(m);
 
   m.querySelector('#wt-box-close').onclick=()=>m.remove();
@@ -458,12 +480,12 @@ const urlHTML=url=>{
   return `<a class="wt-url" href="${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
 };
 
-const addTool=(icon,title,description,fn)=>{
+const addTool=(iconKey,title,description,fn)=>{
   const b=document.createElement('button');
   b.className='wt-tool';
   b.dataset.search=(title+' '+description).toLowerCase();
   b.innerHTML=`
-    <div class="wt-tool-ico">${icon}</div>
+    <div class="wt-tool-ico">${ic(ICONS[iconKey],17)}</div>
     <div class="wt-tool-body">
       <div class="wt-tool-title">${esc(title)}</div>
       <div class="wt-tool-desc">${esc(description)}</div>
@@ -493,14 +515,14 @@ const bindCopies=()=>{
   document.querySelectorAll('#wt-content .wt-copy').forEach(b=>{
     b.onclick=async()=>{
       const ok=await copy(b.dataset.copy);
-      b.textContent=ok?'Copied ✓':'Failed';
+      b.textContent=ok?'Copied':'Failed';
       setTimeout(()=>b.textContent='Copy',1200);
     };
   });
 };
 
 addTool(
-  '📄','Page Overview',
+  'overview','Page Overview',
   'Title, URL, domain and document statistics',
   ()=>{
     const rows=[
@@ -529,7 +551,7 @@ addTool(
 );
 
 addTool(
-  '🔗','Links',
+  'links','Links',
   'List all links with clickable destinations',
   ()=>{
     const data=[...document.links];
@@ -552,7 +574,7 @@ addTool(
 );
 
 addTool(
-  '🖼️','Images',
+  'images','Images',
   'View images with clickable source URLs',
   ()=>{
     const data=[...document.images];
@@ -575,7 +597,7 @@ addTool(
 );
 
 addTool(
-  '📝','Forms',
+  'forms','Forms',
   'Inspect forms, actions, methods and fields',
   ()=>{
     const data=[...document.forms];
@@ -609,7 +631,7 @@ addTool(
 );
 
 addTool(
-  '🧭','Headings',
+  'headings','Headings',
   'View document heading structure',
   ()=>{
     const data=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
@@ -629,14 +651,14 @@ addTool(
 );
 
 addTool(
-  '🎯','DOM Inspector',
+  'inspector','DOM Inspector',
   'Tap an element to inspect basic DOM information',
   ()=>{
     let active=true;
 
     const st=document.createElement('style');
     st.id='wt-inspector-style';
-    st.textContent='[data-wt-highlight]{outline:3px solid #7c9eff!important;outline-offset:2px!important;cursor:crosshair!important}';
+    st.textContent='[data-wt-highlight]{outline:3px solid #6f93f2!important;outline-offset:2px!important;cursor:crosshair!important}';
     document.head.appendChild(st);
 
     const over=e=>{
@@ -712,11 +734,11 @@ const storageViewer=(name,store)=>{
   bindCopies();
 };
 
-addTool('💾','Local Storage','View current site localStorage keys and values',()=>storageViewer('Local Storage',localStorage));
-addTool('🗂️','Session Storage','View current site sessionStorage keys and values',()=>storageViewer('Session Storage',sessionStorage));
+addTool('localStorage','Local Storage','View current site localStorage keys and values',()=>storageViewer('Local Storage',localStorage));
+addTool('sessionStorage','Session Storage','View current site sessionStorage keys and values',()=>storageViewer('Session Storage',sessionStorage));
 
 addTool(
-  '⏱️','Performance',
+  'performance','Performance',
   'Navigation timing and page load metrics',
   ()=>{
     const p=performance.getEntriesByType('navigation')[0];
@@ -739,7 +761,7 @@ addTool(
 );
 
 addTool(
-  '📦','Resources',
+  'resources','Resources',
   'Inspect resources loaded by the current page',
   ()=>{
     const data=performance.getEntriesByType('resource');
@@ -763,7 +785,7 @@ addTool(
 );
 
 addTool(
-  '🍪','Cookies',
+  'cookies','Cookies',
   'Show cookie access status without exposing cookie values',
   ()=>{
     modal(
@@ -778,7 +800,7 @@ addTool(
 );
 
 addTool(
-  '📋','Copy Page Text',
+  'copy','Copy Page Text',
   'Copy visible page text to clipboard',
   async()=>{
     const ok=await copy(document.body.innerText||'');
@@ -787,7 +809,22 @@ addTool(
 );
 
 addTool(
-  '⚙️','Scripts',
+  'source','Page Source',
+  'Open the current document HTML in a readable viewer',
+  ()=>{
+    modal(
+      'Document HTML',
+      `<div class="wt-card">
+        <button class="wt-copy" data-copy="${esc(document.documentElement.outerHTML)}">Copy HTML</button>
+        <pre style="white-space:pre-wrap;word-break:break-word;color:#cdd3dd;font-size:11px;line-height:1.5">${esc(document.documentElement.outerHTML)}</pre>
+      </div>`
+    );
+    bindCopies();
+  }
+);
+
+addTool(
+  'scripts','Scripts',
   'List JavaScript files used by the page',
   ()=>{
     const data=[...document.scripts];
