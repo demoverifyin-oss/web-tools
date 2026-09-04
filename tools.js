@@ -908,7 +908,7 @@ const css = `
 
   font-size: 11px !important;
   line-height: 1.35 !important;
-
+  min-height: 0 !important;
   white-space: pre !important;
   tab-size: 2 !important;
 
@@ -1067,6 +1067,87 @@ const css = `
   }
 }
 
+/* =========================================================
+   ISOLATED LIGHT THEME
+   ========================================================= */
+
+#wt-pro-app[data-wt-theme='light'],
+#wt-pro-modal[data-wt-theme='light'],
+#wt-pro-toast-container[data-wt-theme='light'] {
+  --wt-bg: #ffffff;
+  --wt-bg2: #f5f7fa;
+  --wt-bg3: #eef1f5;
+  --wt-border: #d7dce3;
+  --wt-border-soft: #e5e9ef;
+  --wt-text: #171a1f;
+  --wt-muted: #687181;
+  --wt-accent: #4f6fd8;
+  --wt-accent-soft: #4f6fd81c;
+  --wt-green: #18864b;
+  --wt-yellow: #a66a00;
+  --wt-red: #c73d3d;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-launch {
+  border-color: #d7dce3;
+  background: linear-gradient(145deg, #ffffff, #eef1f5);
+  color: #171a1f;
+  box-shadow: 0 12px 35px #0002, inset 0 1px 0 #fff;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-panel {
+  background: #ffffffee;
+  box-shadow: 0 30px 90px #0003;
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-icon-btn,
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool-icon,
+#wt-pro-app[data-wt-theme='light'] .wt-copy,
+#wt-pro-app[data-wt-theme='light'] .wt-badge,
+#wt-pro-app[data-wt-theme='light'] .wt-pro-close {
+  background: #00000005;
+}
+
+#wt-pro-app[data-wt-theme='light'] #wt-pro-search {
+  background: #f5f7fa;
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool:hover {
+  background: var(--wt-accent-soft);
+}
+
+#wt-pro-app[data-wt-theme='light'] .wt-pro-tool-arrow {
+  color: #687181;
+}
+
+#wt-pro-modal[data-wt-theme='light'] {
+  background: #00000035;
+}
+
+#wt-pro-modal[data-wt-theme='light'] #wt-pro-modal-box {
+  background: #ffffff;
+  box-shadow: 0 -25px 90px #0003;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-pro-grip {
+  background: #00000020;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-code-wrap,
+#wt-pro-modal[data-wt-theme='light'] .wt-code-toolbar {
+  background: #f5f7fa !important;
+}
+
+#wt-pro-modal[data-wt-theme='light'] .wt-code {
+  color: #24292f !important;
+}
+
+#wt-pro-toast-container[data-wt-theme='light'] .wt-toast {
+  background: #ffffff;
+  color: #171a1f;
+  box-shadow: 0 15px 40px #0003;
+}
+
 @media(max-width:600px) {
   #${APP_ID} {
     right: 10px;
@@ -1089,10 +1170,43 @@ const css = `
 }
 
 @media print {
+  /* Never let Web Tools itself appear in the exported document. */
   #${APP_ID},
   #wt-pro-modal,
   #wt-pro-toast-container {
     display: none !important;
+  }
+
+  /*
+   * Preserve the actual webpage appearance in Chrome print/PDF.
+   * Chrome may otherwise replace/omit page background colours and
+   * images during print preview.
+   */
+  html,
+  body,
+  body * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /*
+   * Do not force a white page background here.
+   * The site's own background, gradients and images must win.
+   */
+  html,
+  body {
+    background-color: transparent !important;
+  }
+
+  /*
+   * Keep visual backgrounds, gradients and images eligible for print.
+   * This works together with Chrome's "Background graphics" option.
+   */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 `;
@@ -1215,6 +1329,9 @@ root.innerHTML = `
 `;
 
 document.body.appendChild(root);
+
+/* Start in the original dark theme without touching the host page. */
+root.dataset.wtTheme = state.theme;
 
 const panel = root.querySelector('#wt-pro-panel');
 const toolsContainer = root.querySelector('#wt-pro-tools');
@@ -5156,49 +5273,17 @@ root.querySelector('#wt-pro-theme').addEventListener(
         ? 'light'
         : 'dark';
 
-    const lightTheme = {
-      '--wt-bg': '#ffffff',
-      '--wt-bg2': '#f5f7fa',
-      '--wt-bg3': '#eef1f5',
-      '--wt-border': '#d7dce3',
-      '--wt-border-soft': '#e5e9ef',
-      '--wt-text': '#171a1f',
-      '--wt-muted': '#687181',
-      '--wt-accent': '#4f6fd8',
-      '--wt-accent-soft': '#4f6fd81c',
-      '--wt-green': '#18864b',
-      '--wt-yellow': '#a66a00',
-      '--wt-red': '#c73d3d'
-    };
+    // Keep theme isolated to Web Tools only.
+    // Do not modify the host page's CSS or document theme.
+    const containers = [
+      root,
+      document.getElementById('wt-pro-modal'),
+      document.getElementById('wt-pro-toast-container')
+    ].filter(Boolean);
 
-    const darkTheme = {
-      '--wt-bg': '#0e1014',
-      '--wt-bg2': '#15181e',
-      '--wt-bg3': '#1b1f27',
-      '--wt-border': '#282e38',
-      '--wt-border-soft': '#20252e',
-      '--wt-text': '#f1f4f8',
-      '--wt-muted': '#8d96a5',
-      '--wt-accent': '#7c9df5',
-      '--wt-accent-soft': '#7c9df51c',
-      '--wt-green': '#6fd69b',
-      '--wt-yellow': '#e8bc62',
-      '--wt-red': '#f27676'
-    };
-
-    const theme =
-      state.theme === 'light'
-        ? lightTheme
-        : darkTheme;
-
-    Object.entries(theme).forEach(
-      ([property, value]) => {
-        root.style.setProperty(
-          property,
-          value
-        );
-      }
-    );
+    containers.forEach(container => {
+      container.dataset.wtTheme = state.theme;
+    });
 
     toast(
       state.theme === 'light'
